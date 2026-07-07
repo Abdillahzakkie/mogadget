@@ -34,6 +34,12 @@ export type TUpdateProductInput = z.infer<typeof updateProductSchema>;
 export const clickSchema = z.object({ channel: z.enum(["whatsapp", "instagram"]) });
 export type TClickInput = z.infer<typeof clickSchema>;
 
+export const uploadSignSchema = z.object({
+  contentType: z.string().trim().min(1),
+  ext: z.string().trim().max(8).optional().default(""),
+});
+export type TUploadSignInput = z.infer<typeof uploadSignSchema>;
+
 export const productFilterSchema = z.object({
   category: categorySchema.optional(),
   q: z.string().trim().optional(),

@@ -43,9 +43,12 @@ export async function signUpload(input: {
     );
     return { key, uploadUrl, publicUrl: resolveImageUrl(key) };
   }
+  // The blob route re-namespaces under products/, and Hono's :key matches a single path
+  // segment — so the upload URL carries only the filename, not the full slashed key.
+  const fileName = key.split("/").pop() as string;
   return {
     key,
-    uploadUrl: `${env.apiOrigin.replace(/\/$/, "")}/api/admin/uploads/blob/${key}`,
+    uploadUrl: `${env.apiOrigin.replace(/\/$/, "")}/api/admin/uploads/blob/${fileName}`,
     publicUrl: resolveImageUrl(key),
   };
 }

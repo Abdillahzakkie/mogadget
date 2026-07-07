@@ -9,10 +9,12 @@ import * as adminProductById from "./admin/products/[id]/route";
 import * as adminStatus from "./admin/products/[id]/status/route";
 import * as adminVisibility from "./admin/products/[id]/visibility/route";
 import * as adminImages from "./admin/products/[id]/images/route";
+import * as uploadSign from "./admin/uploads/sign/route";
+import * as uploadBlob from "./admin/uploads/blob/[key]/route";
 import { LOGIN, LOGOUT } from "./auth";
 
 export interface IRouteEntry {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   path: string;
   handler: TBaseHandler<TRouteCtx>;
 }
@@ -34,4 +36,6 @@ export const manifest: IRouteEntry[] = [
   { method: "POST", path: "/api/admin/products/:id/status", handler: h(adminStatus.POST) },
   { method: "POST", path: "/api/admin/products/:id/visibility", handler: h(adminVisibility.POST) },
   { method: "POST", path: "/api/admin/products/:id/images", handler: h(adminImages.POST) },
+  { method: "POST", path: "/api/admin/uploads/sign", handler: h(uploadSign.POST) },
+  { method: "PUT", path: "/api/admin/uploads/blob/:key", handler: h(uploadBlob.PUT) },
 ];
