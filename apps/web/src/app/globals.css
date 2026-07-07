@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --ink: #141518;
+  --paper: #FAFAF7;
+  --brand: #0B7A3E;
+  --brand-hover: #08602F;
+  --whatsapp: #25D366;
+  --amber: #D98E04;
+  --amber-text: #A16A03;
+  --sold: #8A8F98;
+  --danger: #C4372F;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--brand-hover);
+}
+.price {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
