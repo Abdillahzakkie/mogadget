@@ -239,10 +239,13 @@ taxonomy combination), slug generation (human-readable + short unique suffix, st
 machines, and `compileStatements` (Allow/Deny precedence). Route/service integration tests use an ephemeral Mongo +
 Redis. Definition-of-done for v1 mirrors product doc §13.
 
-## 12. Open items (non-blocking)
+## 12. Confirmed items (previously open)
 
-1. ₦ formatting confirmed as `₦450,000` (product doc §14.1).
-2. WhatsApp prefill appends the product URL (recommended; product doc §5.5) — assumed **yes**.
-3. Featured-on-home = newest-first for v1 (admin "feature" toggle deferred).
-4. Object storage target (S3 vs Supabase Storage vs other) to confirm before M2 image upload; `core/lib/s3` is written
-   provider-agnostically behind `getS3Instance` + signed-URL helpers.
+1. ₦ formatting = `₦450,000` (product doc §14.1). **Confirmed.**
+2. WhatsApp prefill **appends the product URL** (`… on MoGadget — {siteUrl}/products/{slug}`). **Confirmed** (owner, 2026-07-07).
+3. Featured-on-home = newest-first for v1 (admin "feature" toggle deferred). **Confirmed.**
+4. Object storage = **AWS S3 (+ CloudFront)** — `core/lib/s3` mirrors Adverta (`getS3Instance` + signed upload URLs +
+   CDN), wired in **M2**. M1 keeps image `key` → public `url` passthrough. **Confirmed** (owner, 2026-07-07).
+5. Hosting = **local dev for now** (Mongo :27017 + Redis :6379); managed/self-hosted target chosen at M4. **Confirmed.**
+6. Seed owner credentials = `owner` / `password` (override via `SEED_OWNER_USERNAME` / `SEED_OWNER_PASSWORD`); must be
+   changed before any real deploy. **Confirmed.**
