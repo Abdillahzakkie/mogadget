@@ -9,7 +9,7 @@ import {
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { z } from "zod";
-import { toPublicProduct } from "../../../../products/dto";
+import { toAdminProduct } from "../../../../products/dto";
 
 interface ICtx {
   params: Promise<{ id: string }>;
@@ -24,7 +24,7 @@ export const POST = withApiHandler<ICtx>(
         const { isVisible } = await validateBody(r, z.object({ isVisible: z.boolean() }));
         const doc = await services.products.setVisibility({ id, isVisible });
         if (!doc) throw ErrNotFound;
-        return ok(toPublicProduct(doc));
+        return ok(toAdminProduct(doc));
       },
       { action: "product.setVisibility", targetType: "product", captureBody: true },
     )(req);

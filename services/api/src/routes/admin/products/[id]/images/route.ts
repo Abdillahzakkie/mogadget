@@ -9,7 +9,7 @@ import {
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { z } from "zod";
-import { toPublicProduct } from "../../../../products/dto";
+import { toAdminProduct } from "../../../../products/dto";
 
 // M1 accepts a list of {key,sortOrder}; signed-URL S3 upload lands in M2.
 const bodySchema = z.object({
@@ -29,7 +29,7 @@ export const POST = withApiHandler<ICtx>(
         const { images } = await validateBody(r, bodySchema);
         const doc = await services.products.updateProduct({ id, patch: { images } });
         if (!doc) throw ErrNotFound;
-        return ok(toPublicProduct(doc));
+        return ok(toAdminProduct(doc));
       },
       { action: "product.setImages", targetType: "product", captureBody: true },
     )(req);

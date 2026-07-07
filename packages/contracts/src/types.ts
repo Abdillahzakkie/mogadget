@@ -39,3 +39,8 @@ export interface IProductDto {
   createdAt: string;
   updatedAt: string;
 }
+
+// Admin surfaces additionally expose the visibility flag (hidden products only appear in admin).
+export interface IAdminProductDto extends IProductDto {
+  isVisible: boolean;
+}
