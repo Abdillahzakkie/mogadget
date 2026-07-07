@@ -20,15 +20,16 @@ describe("toPublicProduct", () => {
       isVisible: true,
       specs: [],
       images: [
-        { key: "b", sortOrder: 1 },
-        { key: "a", sortOrder: 0 },
+        { key: "products/b.jpg", sortOrder: 1 },
+        { key: "products/a.jpg", sortOrder: 0 },
       ],
       whatsappClickCount: 0,
       instagramClickCount: 0,
       createdAt: now,
       updatedAt: now,
     } as never);
-    expect(dto.images[0]!.url).toBe("a");
+    // sorted by sortOrder, and each bare key resolved to a storage URL
+    expect(dto.images[0]!.url).toBe("http://localhost:4000/uploads/products/a.jpg");
     expect(typeof dto.createdAt).toBe("string");
   });
 });

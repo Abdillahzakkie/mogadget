@@ -1,7 +1,8 @@
-import type { IProduct } from "@mogadget/core";
+import { resolveImageUrl, type IProduct } from "@mogadget/core";
 import type { IProductDto } from "@mogadget/contracts/types";
 
-// NOTE: image `key` → public `url`. Until object storage (S3) is wired in M2, url = key passthrough.
+// Image `key` → public `url` via the storage driver (local disk /uploads or S3 CDN).
+// Already-absolute keys (M1 seed data) pass through unchanged.
 export function toPublicProduct(p: IProduct): IProductDto {
   return {
     id: String(p._id),
@@ -18,7 +19,7 @@ export function toPublicProduct(p: IProduct): IProductDto {
     quantity: p.quantity,
     images: [...p.images]
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((i) => ({ url: i.key, sortOrder: i.sortOrder })),
+      .map((i) => ({ url: resolveImageUrl(i.key), sortOrder: i.sortOrder })),
     specs: p.specs,
     whatsappClickCount: p.whatsappClickCount,
     instagramClickCount: p.instagramClickCount,
