@@ -7,6 +7,8 @@ import {
   validateBody,
   getProductByIdDB,
   ErrNotFound,
+  triggerRevalidate,
+  revalidateTags,
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { updateProductSchema } from "@mogadget/contracts/schemas";
@@ -36,6 +38,7 @@ export const PATCH = withApiHandler<ICtx>(
         const patch = await validateBody(r, updateProductSchema, { patch: true });
         const doc = await services.products.updateProduct({ id, patch });
         if (!doc) throw ErrNotFound;
+        triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
         return ok(toAdminProduct(doc));
       },
       { action: "product.update", targetType: "product", captureBody: true },
@@ -50,8 +53,13 @@ export const DELETE = withApiHandler<ICtx>(
     return auditAdmin(
       async () => {
         await requirePermission(Permission.ProductsWrite);
+        const existing = await getProductByIdDB({ id });
         const okDel = await services.products.deleteProduct({ id });
         if (!okDel) throw ErrNotFound;
+        triggerRevalidate([
+          revalidateTags.products,
+          ...(existing ? [revalidateTags.product(existing.slug)] : []),
+        ]);
         return ok({ deleted: true });
       },
       { action: "product.delete", targetType: "product" },

@@ -6,6 +6,8 @@ import {
   auditAdmin,
   validateBody,
   ErrNotFound,
+  triggerRevalidate,
+  revalidateTags,
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { z } from "zod";
@@ -29,6 +31,7 @@ export const POST = withApiHandler<ICtx>(
         const { images } = await validateBody(r, bodySchema);
         const doc = await services.products.updateProduct({ id, patch: { images } });
         if (!doc) throw ErrNotFound;
+        triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
         return ok(toAdminProduct(doc));
       },
       { action: "product.setImages", targetType: "product", captureBody: true },

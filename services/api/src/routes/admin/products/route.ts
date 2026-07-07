@@ -7,6 +7,8 @@ import {
   auditAdmin,
   validateBody,
   ErrInvalidFields,
+  triggerRevalidate,
+  revalidateTags,
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { createProductSchema } from "@mogadget/contracts/schemas";
@@ -25,6 +27,7 @@ export const POST = withApiHandler({ route: "/api/admin/products" }, (req) =>
       const input = await validateBody(r, createProductSchema);
       const doc = await services.products.createProduct(input);
       if (!doc) throw ErrInvalidFields;
+      triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
       return created(toAdminProduct(doc));
     },
     { action: "product.create", targetType: "product", captureBody: true },

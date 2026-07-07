@@ -7,3 +7,4 @@ export * from "./password";
 export * from "./clientIp";
 export * from "./logger";
 export * from "./storage";
+export * from "./revalidate";

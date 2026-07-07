@@ -9,10 +9,13 @@ describe("iam models upsert", () => {
     await connectMongoDB();
   });
   afterAll(async () => {
+    // Anchor to this file's own fixtures (TestAdmin/TestGroup/test-owner). Unanchored
+    // /Test/ + /test/ also match the resolveEffectivePermissions test's RTest/rtest
+    // fixtures, wiping them mid-run when the files execute in parallel (shared Mongo).
     await Promise.all([
-      Policy.deleteMany({ name: /Test/ }),
-      Group.deleteMany({ name: /Test/ }),
-      User.deleteMany({ username: /test/ }),
+      Policy.deleteMany({ name: /^Test/ }),
+      Group.deleteMany({ name: /^Test/ }),
+      User.deleteMany({ username: /^test/ }),
     ]);
     await disconnectMongoDB();
   });

@@ -4,6 +4,7 @@ export const env = {
   sessionSecret: process.env.SESSION_SECRET ?? "dev-insecure-secret-change-me",
   sessionMaxAgeSeconds: Number(process.env.SESSION_MAX_AGE ?? 60 * 60 * 24 * 7),
   siteUrl: process.env.SITE_URL ?? "http://localhost:3000",
+  revalidateSecret: process.env.REVALIDATE_SECRET ?? "dev-revalidate-secret-change-me",
   storageDriver:
     (process.env.STORAGE_DRIVER as "local" | "s3" | undefined) ??
     (process.env.AWS_S3_BUCKET ? "s3" : "local"),

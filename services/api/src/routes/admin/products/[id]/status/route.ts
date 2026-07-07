@@ -6,6 +6,8 @@ import {
   auditAdmin,
   validateBody,
   ErrNotFound,
+  triggerRevalidate,
+  revalidateTags,
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { statusSchema } from "@mogadget/contracts/schemas";
@@ -25,6 +27,7 @@ export const POST = withApiHandler<ICtx>(
         const { status } = await validateBody(r, z.object({ status: statusSchema }));
         const doc = await services.products.setStatus({ id, status });
         if (!doc) throw ErrNotFound;
+        triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
         return ok(toAdminProduct(doc));
       },
       { action: "product.setStatus", targetType: "product", captureBody: true },

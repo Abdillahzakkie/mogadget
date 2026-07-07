@@ -6,6 +6,8 @@ import {
   auditAdmin,
   validateBody,
   ErrNotFound,
+  triggerRevalidate,
+  revalidateTags,
 } from "@mogadget/core";
 import { Permission } from "@mogadget/contracts/iam";
 import { z } from "zod";
@@ -24,6 +26,7 @@ export const POST = withApiHandler<ICtx>(
         const { isVisible } = await validateBody(r, z.object({ isVisible: z.boolean() }));
         const doc = await services.products.setVisibility({ id, isVisible });
         if (!doc) throw ErrNotFound;
+        triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
         return ok(toAdminProduct(doc));
       },
       { action: "product.setVisibility", targetType: "product", captureBody: true },
