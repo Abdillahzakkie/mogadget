@@ -1,11 +1,11 @@
-import type { ZodSchema } from "zod";
+import type { ZodTypeAny, infer as ZodInfer } from "zod";
 import { ErrInvalidFields, ErrInvalidJson } from "../constants/errors";
 
-export async function validateBody<T>(
+export async function validateBody<S extends ZodTypeAny>(
   req: Request,
-  schema: ZodSchema<T>,
+  schema: S,
   opts?: { patch?: boolean },
-): Promise<T> {
+): Promise<ZodInfer<S>> {
   let raw: unknown;
   try {
     raw = await req.json();
@@ -19,7 +19,7 @@ export async function validateBody<T>(
   if (!parsed.success) throw ErrInvalidFields;
   return parsed.data;
 }
-export function parseOrThrow<T>(schema: ZodSchema<T>, data: unknown): T {
+export function parseOrThrow<S extends ZodTypeAny>(schema: S, data: unknown): ZodInfer<S> {
   const parsed = schema.safeParse(data);
   if (!parsed.success) throw ErrInvalidFields;
   return parsed.data;

@@ -14,3 +14,11 @@ export {
   getProductBySlugAnyStatusDB,
 } from "./models/products";
 export { getUserByUsernameDB } from "./models/users";
+
+// Domain entity types for flat imports.
+export type {
+  IProduct,
+  IProductImage,
+  IProductSpec,
+  IProductListFilter,
+} from "./models/products/types";
