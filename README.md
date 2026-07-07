@@ -31,7 +31,7 @@ yarn seed                     # owner in Administrators, IAM built-ins, demo cat
 yarn workspace @mogadget/api start    # API on :4000
 yarn workspace @mogadget/web dev      # web on :3000 (proxies /api → :4000)
 
-yarn test                     # 35 tests across all workspaces (needs Mongo + Redis)
+yarn test                     # 39 tests across all workspaces (needs Mongo + Redis)
 yarn ts.check                 # typecheck
 ```
 
@@ -39,10 +39,29 @@ yarn ts.check                 # typecheck
 
 - **M1 (foundation) — done.** Monorepo, contracts, core (Mongo/Redis/lib/middleware/models/services),
   Hono API (public product + admin CRUD + auth + click beacon), seed, and a catalog-wired web shell.
-- **M2 — admin panel** (login UI, dashboard table, create/edit form + S3 image upload).
+- **M2 (admin panel) — done.** Edge-gated `/admin`: login/session, dashboard table with quick
+  status/visibility toggles + click column, taxonomy-aware create/edit form, and photo upload +
+  reorder via pluggable storage (local disk now, AWS S3 later — no code change).
 - **M3 — public catalog** (home, catalog + filters/search/facets, product page + gallery + WhatsApp
   deep link, contact, SOLD/OOS states, ISR).
 - **M4 — polish, SEO/OpenGraph, deploy.**
+
+### Admin
+
+Sign in at `/admin/login` (seeded `owner` / `password`). The Next edge middleware verifies the
+`mg_session` cookie for every `/admin/**` route; every mutating API route also re-checks
+`products:write`. Images upload straight from the browser to a signed URL — the browser never holds a
+storage write key.
+
+**Storage env** (all optional; sensible local-dev defaults):
+
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `STORAGE_DRIVER` | `local` (or `s3` if `AWS_S3_BUCKET` set) | which driver to use |
+| `API_ORIGIN` | `http://localhost:4000` | base for local `/uploads/*` URLs |
+| `LOCAL_UPLOAD_DIR` | `.uploads` | on-disk store for the local driver |
+| `AWS_S3_BUCKET` / `AWS_REGION` | — / `us-east-1` | S3 driver target |
+| `CDN_BASE_URL` | — | public base for S3-served images |
 
 See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (M1 plan).
 
