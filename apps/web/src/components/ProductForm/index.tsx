@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type {
-  IProductDto,
+  IAdminProductDto,
   TCategory,
   TCondition,
   TCosmeticGrade,
@@ -35,7 +35,7 @@ export interface ProductPayload {
 }
 
 interface Props {
-  initial?: IProductDto;
+  initial?: IAdminProductDto;
   submitLabel: string;
   onSubmit: (payload: ProductPayload, images: ImageRef[]) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -53,7 +53,7 @@ export function ProductForm({ initial, submitLabel, onSubmit, onDelete }: Props)
   const [quantity, setQuantity] = useState(initial?.quantity != null ? String(initial.quantity) : "1");
   const [specs, setSpecs] = useState<{ label: string; value: string }[]>(initial?.specs ?? []);
   const [images, setImages] = useState<ImgItem[]>(
-    (initial?.images ?? []).map((i) => ({ key: "", url: i.url })),
+    (initial?.images ?? []).map((i) => ({ key: i.key, url: i.url })),
   );
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -105,8 +105,8 @@ export function ProductForm({ initial, submitLabel, onSubmit, onDelete }: Props)
       setError("Name, brand and a positive price are required.");
       return;
     }
-    // Newly uploaded images have a key; pre-existing edit images without a key are dropped from the
-    // reorder payload (their keys aren't exposed by the public DTO). Re-upload to change them.
+    // Every image (existing, from the admin DTO, or freshly uploaded) carries a key, so the current
+    // on-screen order becomes the persisted sortOrder.
     const imageRefs: ImageRef[] = images
       .filter((i) => i.key)
       .map((i, sortOrder) => ({ key: i.key, sortOrder }));
@@ -123,7 +123,7 @@ export function ProductForm({ initial, submitLabel, onSubmit, onDelete }: Props)
       status,
       quantity: isNew ? Math.max(0, Math.trunc(Number(quantity) || 0)) : null,
       specs: specs.filter((s) => s.label.trim() && s.value.trim()),
-      isVisible: initial ? ((initial as { isVisible?: boolean }).isVisible ?? true) : true,
+      isVisible: initial?.isVisible ?? true,
     };
 
     setBusy(true);

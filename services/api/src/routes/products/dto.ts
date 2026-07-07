@@ -28,7 +28,13 @@ export function toPublicProduct(p: IProduct): IProductDto {
   };
 }
 
-// Admin DTO = public DTO + the visibility flag (admin lists include hidden products).
+// Admin DTO = public DTO + visibility flag + image storage keys (so edit can round-trip images).
 export function toAdminProduct(p: IProduct): IAdminProductDto {
-  return { ...toPublicProduct(p), isVisible: p.isVisible };
+  return {
+    ...toPublicProduct(p),
+    isVisible: p.isVisible,
+    images: [...p.images]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((i) => ({ key: i.key, url: resolveImageUrl(i.key), sortOrder: i.sortOrder })),
+  };
 }

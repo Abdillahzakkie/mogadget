@@ -40,7 +40,13 @@ export interface IProductDto {
   updatedAt: string;
 }
 
+// Admin image DTO also carries the storage `key` so the edit form can round-trip / reorder
+// existing images (the public DTO deliberately exposes only the resolved URL).
+export interface IAdminProductImageDto extends IProductImageDto {
+  key: string;
+}
 // Admin surfaces additionally expose the visibility flag (hidden products only appear in admin).
-export interface IAdminProductDto extends IProductDto {
+export interface IAdminProductDto extends Omit<IProductDto, "images"> {
   isVisible: boolean;
+  images: IAdminProductImageDto[];
 }
