@@ -31,12 +31,37 @@ yarn seed                     # owner in Administrators, IAM built-ins, demo cat
 yarn workspace @mogadget/api start    # API on :4000
 yarn workspace @mogadget/web dev      # web on :3000 (proxies /api → :4000)
 
-yarn test                     # 43 tests across all workspaces (needs Mongo + Redis)
+yarn test                     # 120 unit tests across all workspaces (needs Mongo + Redis)
 yarn ts.check                 # typecheck
 ```
 
 Copy `.env.example` → `.env` and set real secrets before any deploy (`SESSION_SECRET` and
-`REVALIDATE_SECRET` must be **identical** in the API and web processes).
+`REVALIDATE_SECRET` must be **identical** in the API and web processes). In production
+(`NODE_ENV=production`) the API **refuses to boot** if either is left at its dev default, and the
+session cookie is issued `Secure`.
+
+## Validation
+
+The app ships with two automated safety nets, both run against real Mongo + Redis:
+
+```bash
+yarn test                     # 120 unit tests; enforces ≥95% coverage (statements/lines 100%,
+                              # branches 97%, functions 99%). HTTP route handlers are covered by
+                              # the e2e suite instead and excluded from the unit metric.
+npx vitest run --coverage     # coverage report + threshold gate
+
+# End-to-end (real browser → web → API → DB). Start Mongo/Redis + seed first, then:
+yarn workspace @mogadget/api start &                 # :4000
+yarn workspace @mogadget/web dev &                   # :3000 (or -p 3100)
+E2E_BASE_URL=http://localhost:3000 \
+  yarn workspace @mogadget/web e2e                   # 15 Playwright specs, every public + admin route
+```
+
+The e2e suite (`apps/web/e2e/`) drives every route and asserts real integration: seeded images
+decode in the browser, filters/search/sort round-trip through the API, the WhatsApp CTA fires a
+click beacon that persists to the DB, and the full admin create→edit→delete lifecycle persists at
+each step. `yarn seed` now downloads real product photos into local blob storage so the catalog
+renders with valid images out of the box.
 
 ## Status
 

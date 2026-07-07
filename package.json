@@ -3,7 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["apps/*", "packages/*", "services/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -16,10 +20,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "2.1.9",
     "turbo": "^2.3.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^2.1.0"
   },
   "packageManager": "yarn@1.22.22"
 }

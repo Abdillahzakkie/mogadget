@@ -40,8 +40,30 @@ describe("assertProductInvariants", () => {
   it("rejects a RESTOCKABLE with an AVAILABLE status", () => {
     expect(() => assertProductInvariants({ ...newValid, status: "AVAILABLE" })).toThrow();
   });
-  it("rejects a non-integer price", () => {
+  it("rejects a non-integer or non-positive price", () => {
     expect(() => assertProductInvariants({ ...newValid, priceNaira: 10.5 })).toThrow();
+    expect(() => assertProductInvariants({ ...newValid, priceNaira: 0 })).toThrow();
+  });
+  it("rejects NEW with a UNIQUE_UNIT stock type", () => {
+    expect(() => assertProductInvariants({ ...newValid, stockType: "UNIQUE_UNIT" })).toThrow();
+  });
+  it("rejects NEW with a null or negative quantity", () => {
+    expect(() => assertProductInvariants({ ...newValid, quantity: null })).toThrow();
+    expect(() => assertProductInvariants({ ...newValid, quantity: -1 })).toThrow();
+  });
+  it("accepts NEW with an OUT_OF_STOCK status and zero quantity", () => {
+    expect(() =>
+      assertProductInvariants({ ...newValid, status: "OUT_OF_STOCK", quantity: 0 }),
+    ).not.toThrow();
+  });
+  it("rejects pre-owned with a RESTOCKABLE stock type", () => {
+    expect(() => assertProductInvariants({ ...usedValid, stockType: "RESTOCKABLE" })).toThrow();
+  });
+  it("rejects pre-owned with an IN_STOCK status", () => {
+    expect(() => assertProductInvariants({ ...usedValid, status: "IN_STOCK" })).toThrow();
+  });
+  it("accepts a pre-owned SOLD unit", () => {
+    expect(() => assertProductInvariants({ ...usedValid, status: "SOLD" })).not.toThrow();
   });
 });
 

@@ -4,7 +4,9 @@ import { connectRedis, redis } from "../../databases/redis";
 import { upsertPolicyByNameDB, Policy } from "../../models/policies";
 import { upsertGroupByNameDB, Group } from "../../models/groups";
 import { upsertUserByUsernameDB, User } from "../../models/users";
-import resolveEffectivePermissions from "./resolveEffectivePermissions";
+import resolveEffectivePermissions, {
+  invalidateEffectivePermissions,
+} from "./resolveEffectivePermissions";
 
 describe("resolveEffectivePermissions", () => {
   beforeAll(async () => {
@@ -37,11 +39,23 @@ describe("resolveEffectivePermissions", () => {
       passwordHash: "x",
       groupIds: [String(grp?._id)],
     });
-    const perms = await resolveEffectivePermissions({
-      userId: String(usr?._id),
-      refreshCache: true,
-    });
+    const userId = String(usr?._id);
+    const perms = await resolveEffectivePermissions({ userId, refreshCache: true });
     expect(perms).toContain("products:write");
     expect(perms).toContain("iam:manage");
+
+    // Second call (no refresh) is served from the Redis cache.
+    const cached = await resolveEffectivePermissions({ userId });
+    expect(cached).toEqual(perms);
+
+    // Invalidation clears the cache; a fresh resolve still returns the same set.
+    await invalidateEffectivePermissions({ userId });
+    expect(await resolveEffectivePermissions({ userId })).toContain("products:write");
+  });
+
+  it("returns an empty set for an unknown user", async () => {
+    expect(
+      await resolveEffectivePermissions({ userId: "0123456789abcdef01234567", refreshCache: true }),
+    ).toEqual([]);
   });
 });

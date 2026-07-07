@@ -21,7 +21,7 @@ export async function signSession(
 }
 export async function verifySession(token: string): Promise<ISessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     return {
       sub: String(payload.sub),
       username: String(payload.username),

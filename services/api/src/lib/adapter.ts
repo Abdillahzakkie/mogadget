@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { runWithRequestContext, verifySession, type IEnvelope, type TBaseHandler } from "@mogadget/core";
+import { env, runWithRequestContext, verifySession, type IEnvelope, type TBaseHandler } from "@mogadget/core";
 
 export type TRouteCtx = { params: Promise<Record<string, string>> };
 
@@ -28,10 +28,12 @@ export async function runRoute(
   const headers = new Headers({ "content-type": "application/json", ...(envelope.headers ?? {}) });
   // Read cookies from ctx directly: the handler mutated this same array inside the ALS scope,
   // which has since exited — getQueuedCookies() here would read an empty store.
+  // Secure in production so the session cookie is never sent over plain HTTP.
+  const secure = env.isProduction ? "; Secure" : "";
   for (const ck of ctx.cookies) {
     headers.append(
       "set-cookie",
-      `${ck.name}=${encodeURIComponent(ck.value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ck.maxAge}`,
+      `${ck.name}=${encodeURIComponent(ck.value)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${ck.maxAge}`,
     );
   }
   return new Response(JSON.stringify(envelope.body), { status: envelope.status, headers });

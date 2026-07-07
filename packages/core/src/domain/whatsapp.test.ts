@@ -14,4 +14,10 @@ describe("buildWhatsAppLink", () => {
     expect(text).toContain("₦485,000");
     expect(text).toContain("https://mo.ng/products/x");
   });
+  it("omits the trailing url when none is supplied", () => {
+    const href = buildWhatsAppLink({ name: "PS5", priceNaira: 985000 });
+    const text = decodeURIComponent(href.split("text=")[1]!);
+    expect(text).toContain("PS5");
+    expect(text).not.toContain(" — ");
+  });
 });
