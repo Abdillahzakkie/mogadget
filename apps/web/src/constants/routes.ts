@@ -2,6 +2,7 @@ export const routes = {
   home: "/",
   catalog: "/products",
   product: (slug: string) => `/products/${slug}`,
+  contact: "/contact",
   adminLogin: "/admin/login",
   admin: "/admin",
   adminNew: "/admin/products/new",

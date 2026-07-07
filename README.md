@@ -31,9 +31,12 @@ yarn seed                     # owner in Administrators, IAM built-ins, demo cat
 yarn workspace @mogadget/api start    # API on :4000
 yarn workspace @mogadget/web dev      # web on :3000 (proxies /api → :4000)
 
-yarn test                     # 39 tests across all workspaces (needs Mongo + Redis)
+yarn test                     # 43 tests across all workspaces (needs Mongo + Redis)
 yarn ts.check                 # typecheck
 ```
+
+Copy `.env.example` → `.env` and set real secrets before any deploy (`SESSION_SECRET` and
+`REVALIDATE_SECRET` must be **identical** in the API and web processes).
 
 ## Status
 
@@ -42,9 +45,13 @@ yarn ts.check                 # typecheck
 - **M2 (admin panel) — done.** Edge-gated `/admin`: login/session, dashboard table with quick
   status/visibility toggles + click column, taxonomy-aware create/edit form, and photo upload +
   reorder via pluggable storage (local disk now, AWS S3 later — no code change).
-- **M3 — public catalog** (home, catalog + filters/search/facets, product page + gallery + WhatsApp
-  deep link, contact, SOLD/OOS states, ISR).
-- **M4 — polish, SEO/OpenGraph, deploy.**
+- **M3 (public catalog) — done.** Home (featured newest-first), catalog grid with URL-driven
+  filters/search/price/sort + live facet counts, product page with photo gallery + spec grid + the
+  single reserved WhatsApp CTA (click beacon fires before navigation) + Instagram, contact/visit-us,
+  SOLD/OOS states, and on-demand ISR (admin edits refresh public pages within seconds).
+- **M4 (polish & launch) — done.** Per-product SEO + OpenGraph/Twitter cards (rich WhatsApp/IG link
+  previews), `sitemap.xml` + `robots.txt`, admin analytics summary, responsive/mobile pass (sticky
+  mobile WhatsApp bar), and `.env.example` for deploy. Hosting target itself is still local-dev.
 
 ### Admin
 
@@ -63,7 +70,29 @@ storage write key.
 | `AWS_S3_BUCKET` / `AWS_REGION` | — / `us-east-1` | S3 driver target |
 | `CDN_BASE_URL` | — | public base for S3-served images |
 
-See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (M1 plan).
+### Public catalog
+
+Routes: `/` (home, featured newest-first), `/products` (grid + filter rail), `/products/[slug]`
+(gallery + specs + WhatsApp/Instagram), `/contact`. All filter state lives in the URL query string
+(`?category=PHONES&condition=UK_USED&min=100000&sort=price_asc`) so filtered views are shareable and
+server-rendered; facet counts come from `GET /api/products/facets`. Hidden products 404 everywhere;
+SOLD/OUT_OF_STOCK stay visible but greyed. The WhatsApp CTA is the single reserved-green button per
+screen — tapping it fires a `sendBeacon` click before opening the prefilled `wa.me` deep link.
+
+**SEO/SMO:** every product page emits `generateMetadata` with OpenGraph + Twitter cards (photo, name,
+price) so WhatsApp/Instagram link previews render; `sitemap.xml` and `robots.txt` are generated
+(`/admin` disallowed).
+
+**On-demand ISR:** public reads are tagged (`products`, `product:<slug>`); after any admin mutation the
+API fire-and-forgets a `POST {SITE_URL}/revalidate` (secret-gated by `REVALIDATE_SECRET`) so cached
+pages refresh within seconds — layered on top of the Redis service cache. `revalidate: 300` is the
+time-based backstop.
+
+**Origin env:** `SITE_URL` (public web origin, used by the API for the revalidate webhook and by
+`sitemap`/OG canonical URLs), `NEXT_PUBLIC_SITE_URL` (inlined for client-side WhatsApp links),
+`REVALIDATE_SECRET` (must match between API and web). See `.env.example` for the full list.
+
+See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (M1/M2 plans).
 
 ## Conventions
 
