@@ -7,6 +7,7 @@ import {
   models,
   newImageKey,
   putImageBlob,
+  readLocalBlob,
   sniffImageType,
   storageDriver,
 } from "../src/server";
@@ -14,6 +15,11 @@ import { iam } from "../src/server/validators";
 
 const OWNER_USERNAME = process.env.SEED_OWNER_USERNAME ?? "owner";
 const OWNER_PASSWORD = process.env.SEED_OWNER_PASSWORD ?? "password";
+
+// SEED_IMAGE_SOURCE=local reuses the images already on disk (the keys come from the existing
+// product records) instead of re-downloading, and re-stores them through the current driver —
+// i.e. uploads the local .uploads blobs to S3 when STORAGE_DRIVER=s3. Requires a prior seed.
+const REUSE_LOCAL = process.env.SEED_IMAGE_SOURCE === "local";
 
 // Real product photos, keyed by product name. Downloaded at seed time, validated as
 // genuine images (magic-byte sniff), and stored through the configured storage driver
@@ -90,6 +96,25 @@ async function seedImage(name: string, url: string): Promise<string | null> {
   }
   const key = newImageKey(sniff.ext);
   await putImageBlob(key, bytes, sniff.contentType);
+  return key;
+}
+
+// Reuse an image already stored on disk (key taken from the existing DB record): read the
+// local blob, validate it, and store it through the configured driver — i.e. upload the exact
+// local bytes to S3 when STORAGE_DRIVER=s3. Same key in, same key out. A missing/invalid local
+// blob drops that image; a storage failure throws (loud S3 misconfiguration).
+async function reuseLocalImage(name: string, key: string): Promise<string | null> {
+  const blob = await readLocalBlob(key);
+  if (!blob) {
+    console.warn(`  ! ${name}: local image ${key} not found on disk — dropped`);
+    return null;
+  }
+  const sniff = sniffImageType(blob.bytes);
+  if (!sniff) {
+    console.warn(`  ! ${name}: local image ${key} is not a valid image — dropped`);
+    return null;
+  }
+  await putImageBlob(key, blob.bytes, sniff.contentType);
   return key;
 }
 
@@ -277,18 +302,49 @@ async function main() {
     groupIds: [groupIdByName.Administrators!],
   });
 
-  // 3) Demo products. Teardown-by-name then recreate → idempotent & re-runnable, and
-  // guarantees every product carries freshly-downloaded images even on a re-seed.
+  // 3) Demo products. Teardown-by-name then recreate → idempotent & re-runnable. Download mode
+  // fetches fresh images; reuse mode (SEED_IMAGE_SOURCE=local) re-stores the existing on-disk
+  // blobs through the current driver (e.g. uploads .uploads → S3) under their existing keys.
   const names = DEMO.map((d) => d.name);
+
+  const localImagesByName: Record<string, { key: string; sortOrder: number }[]> = {};
+  if (REUSE_LOCAL) {
+    // Capture the current image keys BEFORE teardown so the exact on-disk blobs can be reused.
+    const existing = await models.products.Product.find({ name: { $in: names } })
+      .select("name images")
+      .lean<{ name: string; images?: { key: string; sortOrder: number }[] }[]>()
+      .exec();
+    for (const p of existing) {
+      localImagesByName[p.name] = (p.images ?? [])
+        .map((im) => ({ key: im.key, sortOrder: im.sortOrder }))
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    const total = Object.values(localImagesByName).reduce((n, a) => n + a.length, 0);
+    if (!total) {
+      throw new Error(
+        "SEED_IMAGE_SOURCE=local but no existing product images were found to reuse. " +
+          "Run a normal (download) seed first, or unset SEED_IMAGE_SOURCE.",
+      );
+    }
+    console.log(`Reusing ${total} local image(s) → ${storageDriver()} store.`);
+  }
+
   await models.products.Product.deleteMany({ name: { $in: names } });
 
   let imageCount = 0;
   for (const d of DEMO) {
-    const sources = IMAGE_SOURCES[d.name] ?? [];
     const images: { key: string; sortOrder: number }[] = [];
-    for (let i = 0; i < sources.length; i++) {
-      const key = await seedImage(d.name, sources[i]!);
-      if (key) images.push({ key, sortOrder: i });
+    if (REUSE_LOCAL) {
+      for (const im of localImagesByName[d.name] ?? []) {
+        const key = await reuseLocalImage(d.name, im.key);
+        if (key) images.push({ key, sortOrder: im.sortOrder });
+      }
+    } else {
+      const sources = IMAGE_SOURCES[d.name] ?? [];
+      for (let i = 0; i < sources.length; i++) {
+        const key = await seedImage(d.name, sources[i]!);
+        if (key) images.push({ key, sortOrder: i });
+      }
     }
     imageCount += images.length;
     await models.products.createProductDB({
