@@ -1,9 +1,0 @@
-export { default as getProductBySlug } from "./getProductBySlug";
-export { default as listProducts } from "./listProducts";
-export { default as productFacets } from "./productFacets";
-export { default as createProduct } from "./createProduct";
-export { default as updateProduct } from "./updateProduct";
-export { default as deleteProduct } from "./deleteProduct";
-export { default as setStatus } from "./setStatus";
-export { default as setVisibility } from "./setVisibility";
-export { default as incrementClick } from "./incrementClick";

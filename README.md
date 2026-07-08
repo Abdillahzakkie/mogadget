@@ -3,19 +3,23 @@
 Single-owner gadget catalog for a Lagos retailer (new & pre-owned electronics). Browse → chat to
 order on WhatsApp/Instagram. **Not** a marketplace: no cart, checkout, payments, or customer accounts.
 
-Built on the **Adverta "Golden Bite" architecture** — a Turborepo monorepo (`@mogadget/*`) with
-MongoDB + Redis, a per-entity **Model → Service → Route** ("DOE") triad, ported IAM (users/groups/
-policies + `withPermission`) seeded to a single superadmin, and Redis caching with glob-SCAN
-invalidation.
+A single **Next.js app** (Managerenta-style layout): the backend lives in `src/app/api` route
+handlers over `src/server/*`, with MongoDB + Redis, a per-entity **Model → Service → Route** triad,
+ported IAM (users/groups/policies + `withPermission`) seeded to a single superadmin, and Redis
+caching with glob-SCAN invalidation.
 
 ## Layout
 
 ```
-apps/web            @mogadget/web         Next.js App Router — public catalog + /admin
-services/api        @mogadget/api         Hono host: routes + adapter + manifest + seed
-packages/contracts  @mogadget/contracts   zod schemas + T* types + I*Dto + IAM catalog + constants
-packages/core       @mogadget/core        models/ services/ lib/ middleware/ databases/ runtime/
-packages/api-client @mogadget/api-client  (M2) typed transport client
+src/app             App Router — public catalog, /admin, and all /api route handlers
+src/server          constants/ databases/ domain/ helpers/ lib/ metrics/ middleware/
+                    models/ runtime/ services/ validators/ (zod schemas + DTO types + IAM)
+src/components      reusable UI primitives
+src/layouts         app chrome (navbar, footer, admin header)
+src/libs            page containers (XxxWrapper)
+src/hooks           per-domain SWR hooks
+scripts/seed.ts     seed: owner + IAM built-ins + demo catalog (with real photos)
+e2e/                Playwright suite (single origin)
 ```
 
 ## Quick start
@@ -28,45 +32,41 @@ docker run --rm -d -p 6379:6379 redis:7-alpine
 yarn install
 yarn seed                     # owner in Administrators, IAM built-ins, demo catalog
                               # → prints: owner / password
-yarn workspace @mogadget/api start    # API on :4000
-yarn workspace @mogadget/web dev      # web on :3000 (proxies /api → :4000)
+yarn dev                      # app on :3000 (frontend + API, one origin)
 
-yarn test                     # 120 unit tests across all workspaces (needs Mongo + Redis)
+yarn test                     # unit tests (needs Mongo + Redis)
 yarn ts.check                 # typecheck
 ```
 
-Copy `.env.example` → `.env` and set real secrets before any deploy (`SESSION_SECRET` and
-`REVALIDATE_SECRET` must be **identical** in the API and web processes). In production
-(`NODE_ENV=production`) the API **refuses to boot** if either is left at its dev default, and the
-session cookie is issued `Secure`.
+Copy `.env.example` → `.env` and set real secrets before any deploy. In production
+(`NODE_ENV=production`) the app **refuses to boot** if `SESSION_SECRET` is left at its dev
+default, and the session cookie is issued `Secure`.
 
 ## Validation
 
 The app ships with two automated safety nets, both run against real Mongo + Redis:
 
 ```bash
-yarn test                     # 120 unit tests; enforces ≥95% coverage (statements/lines 100%,
-                              # branches 97%, functions 99%). HTTP route handlers are covered by
-                              # the e2e suite instead and excluded from the unit metric.
+yarn test                     # unit tests; enforces ≥95% coverage. HTTP route handlers are
+                              # covered by the e2e suite instead and excluded from the unit metric.
 npx vitest run --coverage     # coverage report + threshold gate
 
-# End-to-end (real browser → web → API → DB). Start Mongo/Redis + seed first, then:
-yarn workspace @mogadget/api start &                 # :4000
-yarn workspace @mogadget/web dev &                   # :3000 (or -p 3100)
-E2E_BASE_URL=http://localhost:3000 \
-  yarn workspace @mogadget/web e2e                   # 15 Playwright specs, every public + admin route
+# End-to-end (real browser → app → DB). Start Mongo/Redis + seed first, then:
+yarn build
+SITE_URL=http://localhost:3100 yarn start -p 3100 &
+E2E_BASE_URL=http://localhost:3100 yarn e2e          # Playwright specs, every public + admin route
 ```
 
-The e2e suite (`apps/web/e2e/`) drives every route and asserts real integration: seeded images
-decode in the browser, filters/search/sort round-trip through the API, the WhatsApp CTA fires a
-click beacon that persists to the DB, and the full admin create→edit→delete lifecycle persists at
-each step. `yarn seed` now downloads real product photos into local blob storage so the catalog
-renders with valid images out of the box.
+The e2e suite (`e2e/`) drives every route and asserts real integration: seeded images decode in
+the browser, filters/search/sort round-trip through the API, the WhatsApp CTA fires a click beacon
+that persists to the DB, and the full admin create→edit→delete lifecycle persists at each step.
+`yarn seed` downloads real product photos into local blob storage so the catalog renders with
+valid images out of the box.
 
 ## Status
 
-- **M1 (foundation) — done.** Monorepo, contracts, core (Mongo/Redis/lib/middleware/models/services),
-  Hono API (public product + admin CRUD + auth + click beacon), seed, and a catalog-wired web shell.
+- **M1 (foundation) — done.** Contracts, core (Mongo/Redis/lib/middleware/models/services),
+  API (public product + admin CRUD + auth + click beacon), seed, and a catalog-wired web shell.
 - **M2 (admin panel) — done.** Edge-gated `/admin`: login/session, dashboard table with quick
   status/visibility toggles + click column, taxonomy-aware create/edit form, and photo upload +
   reorder via pluggable storage (local disk now, AWS S3 later — no code change).
@@ -77,6 +77,9 @@ renders with valid images out of the box.
 - **M4 (polish & launch) — done.** Per-product SEO + OpenGraph/Twitter cards (rich WhatsApp/IG link
   previews), `sitemap.xml` + `robots.txt`, admin analytics summary, responsive/mobile pass (sticky
   mobile WhatsApp bar), and `.env.example` for deploy. Hosting target itself is still local-dev.
+- **Refactor — managerenta layout.** Monorepo (web + Hono API + packages) collapsed into this
+  single Next.js app; stack parity + frontend conventions per
+  `docs/superpowers/specs/2026-07-08-managerenta-layout-refactor-design.md`.
 
 ### Admin
 
@@ -90,7 +93,6 @@ storage write key.
 | Var | Default | Purpose |
 |-----|---------|---------|
 | `STORAGE_DRIVER` | `local` (or `s3` if `AWS_S3_BUCKET` set) | which driver to use |
-| `API_ORIGIN` | `http://localhost:4000` | base for local `/uploads/*` URLs |
 | `LOCAL_UPLOAD_DIR` | `.uploads` | on-disk store for the local driver |
 | `AWS_S3_BUCKET` / `AWS_REGION` | — / `us-east-1` | S3 driver target |
 | `CDN_BASE_URL` | — | public base for S3-served images |
@@ -108,21 +110,21 @@ screen — tapping it fires a `sendBeacon` click before opening the prefilled `w
 price) so WhatsApp/Instagram link previews render; `sitemap.xml` and `robots.txt` are generated
 (`/admin` disallowed).
 
-**On-demand ISR:** public reads are tagged (`products`, `product:<slug>`); after any admin mutation the
-API fire-and-forgets a `POST {SITE_URL}/revalidate` (secret-gated by `REVALIDATE_SECRET`) so cached
-pages refresh within seconds — layered on top of the Redis service cache. `revalidate: 300` is the
-time-based backstop.
+**On-demand ISR:** public reads are tagged (`products`, `product:<slug>`); after any admin mutation
+the app calls `revalidateTag()` in-process so cached pages refresh within seconds — layered on top
+of the Redis service cache. `revalidate: 300` is the time-based backstop.
 
-**Origin env:** `SITE_URL` (public web origin, used by the API for the revalidate webhook and by
-`sitemap`/OG canonical URLs), `NEXT_PUBLIC_SITE_URL` (inlined for client-side WhatsApp links),
-`REVALIDATE_SECRET` (must match between API and web). See `.env.example` for the full list.
+**Origin env:** `SITE_URL` (public origin, used by SSR self-fetches and `sitemap`/OG canonical
+URLs), `NEXT_PUBLIC_SITE_URL` (inlined for client-side WhatsApp links). See `.env.example` for the
+full list.
 
-See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (M1/M2 plans).
+See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (plans).
 
 ## Conventions
 
-- Response envelope is always `{ code, message, data }`; handlers return `IEnvelope`, never a raw
-  `Response`. Errors are thrown sentinels mapped by `handleError`.
+- Response envelope is always `{ code, message, data }`; handlers return `IEnvelope`, and
+  `withApiHandler` serializes it to the wire `Response`. Errors are thrown sentinels mapped by
+  `handleError`.
 - Permission strings are `resource:action`; explicit **Deny** wins in policy compilation.
 - Product taxonomy invariants (`NEW ⟺ no grade ⟺ RESTOCKABLE ⟺ IN_STOCK/OUT_OF_STOCK`; pre-owned ⟺
   grade ⟺ UNIQUE_UNIT ⟺ AVAILABLE/SOLD) live in one domain function, enforced in the model and zod.
