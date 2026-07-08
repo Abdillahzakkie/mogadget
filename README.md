@@ -29,13 +29,13 @@ e2e/                Playwright suite (single origin)
 docker run --rm -d -p 27017:27017 mongo:7
 docker run --rm -d -p 6379:6379 redis:7-alpine
 
-yarn install
-yarn seed                     # owner in Administrators, IAM built-ins, demo catalog
+pnpm install
+pnpm seed                     # owner in Administrators, IAM built-ins, demo catalog
                               # → prints: owner / password
-yarn dev                      # app on :3000 (frontend + API, one origin)
+pnpm dev                      # app on :3000 (frontend + API, one origin)
 
-yarn test                     # unit tests (needs Mongo + Redis)
-yarn ts.check                 # typecheck
+pnpm test                     # unit tests (needs Mongo + Redis)
+pnpm ts.check                 # typecheck
 ```
 
 Copy `.env.example` → `.env` and set real secrets before any deploy. In production
@@ -47,23 +47,23 @@ default, and the session cookie is issued `Secure`.
 The app ships with two automated safety nets, both run against real Mongo + Redis:
 
 ```bash
-yarn test                     # unit tests; enforces ≥95% coverage. HTTP route handlers are
+pnpm test                     # unit tests; enforces ≥95% coverage. HTTP route handlers are
                               # covered by the e2e suite instead and excluded from the unit metric.
 npx vitest run --coverage     # coverage report + threshold gate
 
 # End-to-end (real browser → app → DB). Start Mongo/Redis + seed first, then:
-yarn build
-SITE_URL=http://localhost:3100 yarn start -p 3100 &
+pnpm build
+SITE_URL=http://localhost:3100 pnpm start -p 3100 &
 # ISR pages prerender empty at build time (no server to self-fetch); the first hit
-# triggers revalidation. Warm the cache before asserting freshness:
-curl -s http://localhost:3100/ >/dev/null && sleep 3 && curl -s http://localhost:3100/ >/dev/null
-E2E_BASE_URL=http://localhost:3100 yarn e2e          # Playwright specs, every public + admin route
+# triggers background revalidation. Poll until the home page serves real data:
+until curl -s http://localhost:3100/ | grep -q "/uploads/products/"; do sleep 2; done
+E2E_BASE_URL=http://localhost:3100 pnpm e2e          # Playwright specs, every public + admin route
 ```
 
 The e2e suite (`e2e/`) drives every route and asserts real integration: seeded images decode in
 the browser, filters/search/sort round-trip through the API, the WhatsApp CTA fires a click beacon
 that persists to the DB, and the full admin create→edit→delete lifecycle persists at each step.
-`yarn seed` downloads real product photos into local blob storage so the catalog renders with
+`pnpm seed` downloads real product photos into local blob storage so the catalog renders with
 valid images out of the box.
 
 ## Status

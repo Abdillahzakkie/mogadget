@@ -46,8 +46,11 @@
     "typescript": "^6.0.3",
     "vitest": "^4"
   },
-  "resolutions": {
-    "postcss": "^8.5.10"
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.10"
+    },
+    "onlyBuiltDependencies": ["bcrypt", "esbuild", "sharp"]
   },
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "pnpm@9.15.9"
 }
