@@ -1,5 +1,9 @@
-import argon2 from "argon2";
+import bcrypt from "bcrypt";
 
-export const hashPassword = (pw: string) => argon2.hash(pw, { type: argon2.argon2id });
+// Managerenta parity: bcrypt (was argon2). The only stored credential is the seeded owner
+// account — a re-seed regenerates the hash, so no dual-verification migration path exists.
+const COST = 12;
+
+export const hashPassword = (pw: string) => bcrypt.hash(pw, COST);
 export const verifyPassword = (hash: string, pw: string) =>
-  argon2.verify(hash, pw).catch(() => false);
+  bcrypt.compare(pw, hash).catch(() => false);

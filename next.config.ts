@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     "@aws-sdk/client-s3",
     "@aws-sdk/s3-request-presigner",
-    "argon2",
+    "bcrypt",
     "ioredis",
     "mongoose",
     "pino",

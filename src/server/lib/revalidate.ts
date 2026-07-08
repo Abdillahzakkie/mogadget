@@ -8,7 +8,9 @@ export function triggerRevalidate(tags: string[]): void {
   if (!tags.length) return;
   void import("next/cache")
     .then(({ revalidateTag }) => {
-      for (const tag of tags) revalidateTag(tag);
+      // Next 16 signature: the "max" cache-life profile expires the tag immediately,
+      // matching the legacy one-argument revalidateTag semantics.
+      for (const tag of tags) revalidateTag(tag, "max");
     })
     .catch((err) => {
       getLogger().warn(`revalidateTag failed: ${String(err)}`);
