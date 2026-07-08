@@ -46,5 +46,8 @@
     "typescript": "^6.0.3",
     "vitest": "^4"
   },
+  "resolutions": {
+    "postcss": "^8.5.10"
+  },
   "packageManager": "yarn@1.22.22"
 }
