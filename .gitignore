@@ -11,3 +11,6 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Next.js generates this on every dev/build (churns between dev/prod paths)
+next-env.d.ts
