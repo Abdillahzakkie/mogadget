@@ -577,11 +577,6 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.28.1.tgz#10064ee44f4347b90c9a02b446bbf80a91632b12"
   integrity sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A==
 
-"@hono/node-server@^1.13.0":
-  version "1.19.14"
-  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.14.tgz#e30f844bc77e3ce7be442aac3b1f73ad8b58d181"
-  integrity sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==
-
 "@img/colour@^1.0.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@img/colour/-/colour-1.1.0.tgz#b0c2c2fa661adf75effd6b4964497cd80010bb9d"
@@ -1038,36 +1033,6 @@
   integrity sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==
   dependencies:
     tslib "^2.8.0"
-
-"@turbo/darwin-64@2.10.4":
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/@turbo/darwin-64/-/darwin-64-2.10.4.tgz#8ba4c3da35315203af32055c3f8c2081311a100c"
-  integrity sha512-m1MUEI4MJ69r5CwfMYxmHi0H0rrgiYCBOp0tgBZ9x/YVvOb5uu/lRIDyDwdtH054R2yWeQaIigUGu6aCX9f8cA==
-
-"@turbo/darwin-arm64@2.10.4":
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/@turbo/darwin-arm64/-/darwin-arm64-2.10.4.tgz#0b2acafd439cc8045f0caea86418cafa451a45b0"
-  integrity sha512-VQ1Yxs5zkPT+2z7t1P4mvn6JmcKLkOCAsPuK9XbOvuVj0DlTlETfIXNisX0771v/vTWHOQqiwoGi+TtAUq8efw==
-
-"@turbo/linux-64@2.10.4":
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/@turbo/linux-64/-/linux-64-2.10.4.tgz#37183deb4c35c13d929af6fefc7c78fd0b11d499"
-  integrity sha512-IzV1QovmwX7mfGnVinmE++2IB8tbeo38weltiuH5zNqwCTBjLs/DytyRKx+bmnhHdXIq9SheR8p0Nip/LBUPHg==
-
-"@turbo/linux-arm64@2.10.4":
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/@turbo/linux-arm64/-/linux-arm64-2.10.4.tgz#76c5871a6f5023d513bcc42e5c2df9f4a9339cde"
-  integrity sha512-rfujSQkP5aYiRn0PgTM7F00WkJCP/bKDVZbOx3WmrZwa/vHA0bplhCl328kpX7VI9HH2vI90ISGwuSVgJgoqTw==
-
-"@turbo/windows-64@2.10.4":
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/@turbo/windows-64/-/windows-64-2.10.4.tgz#bab445734a769a099dc2f1305c236c80de27c972"
-  integrity sha512-NnspP7Wd5fa3Wwnqv9bKfhegqZzuHBgbPxdZU/idTLQcazx/vgKu95JlCx2YHY0hdvKCnPcARrDwM+KEUmaO7A==
-
-"@turbo/windows-arm64@2.10.4":
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/@turbo/windows-arm64/-/windows-arm64-2.10.4.tgz#ab5f0c53266bbe18a52d1f5a0a15f718ba2378f3"
-  integrity sha512-Iv02YgOpaEShc2OkG7mgCJ2pEw1RUKiKbs0h8W5wAf4jZ5vpmraTEjuGTgHRuOORQnC1GN3KHo5WB+hu1abRMA==
 
 "@types/estree@1.0.9", "@types/estree@^1.0.0":
   version "1.0.9"
@@ -1625,11 +1590,6 @@ hasown@^2.0.2, hasown@^2.0.4:
   integrity sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==
   dependencies:
     function-bind "^1.1.2"
-
-hono@^4.6.0:
-  version "4.12.28"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.12.28.tgz#c2e12c32027f0e9fb8b0cef2ecfb73050c2ca62e"
-  integrity sha512-YwUvVpSF7m1yOblFPrU3Hbo8XhPheBoiyfGuII6z19LnOr6JpDnyyp7LFNrfV56wS8tpvtBFGRISHN02pDdLOA==
 
 html-escaper@^2.0.0:
   version "2.0.2"
@@ -2317,18 +2277,6 @@ tsx@^4.19.0:
     esbuild "~0.28.0"
   optionalDependencies:
     fsevents "~2.3.3"
-
-turbo@^2.3.0:
-  version "2.10.4"
-  resolved "https://registry.yarnpkg.com/turbo/-/turbo-2.10.4.tgz#e406af232678433949987b190efe7d99f47412e2"
-  integrity sha512-GQpduILaKjoaGljw097ScsSyKTtZSY7cZ3bJktzfTkPMyCf3ShKLuXK2IaOEN2Plziml+ArR7WJ1m+V4VbnaKQ==
-  optionalDependencies:
-    "@turbo/darwin-64" "2.10.4"
-    "@turbo/darwin-arm64" "2.10.4"
-    "@turbo/linux-64" "2.10.4"
-    "@turbo/linux-arm64" "2.10.4"
-    "@turbo/windows-64" "2.10.4"
-    "@turbo/windows-arm64" "2.10.4"
 
 typescript@^5.7.0:
   version "5.9.3"
