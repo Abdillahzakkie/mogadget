@@ -164,7 +164,10 @@ test.describe("public catalog", () => {
     await expect(page.getByText(/out of stock/i)).toBeVisible();
   });
 
-  test("hidden product 404s on the public detail route", async ({ page }) => {
+  test("unknown slug 404s on the public detail route", async ({ page }) => {
+    // Seeded slugs carry a random suffix, so this fixed slug never exists. The true
+    // hidden-product 404 (real slug of an isVisible:false doc) lives in admin.spec.ts,
+    // which can resolve the slug through the authenticated admin API.
     const res = await page.goto("/products/ipad-air-m2-draft");
     expect(res?.status()).toBe(404);
   });

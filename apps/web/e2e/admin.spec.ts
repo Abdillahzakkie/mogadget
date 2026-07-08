@@ -20,7 +20,20 @@ const field = (label: string) =>
     .getByText(label, { exact: true })
     .locator("xpath=following-sibling::*[self::input or self::select or self::textarea][1]");
 
-type AdminRow = { id: string; name: string; priceNaira: number; status: string; isVisible: boolean };
+type AdminRow = {
+  id: string;
+  name: string;
+  priceNaira: number;
+  status: string;
+  isVisible: boolean;
+  images: { url: string }[];
+};
+
+// Tiny valid 1×1 PNG — enough for the storage round-trip; the browser can decode it.
+const PNG_1PX = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
 async function adminList(): Promise<AdminRow[]> {
   const res = await page.request.get(`${API}/api/admin/products`);
   expect(res.ok(), "admin list should be authorized").toBeTruthy();
@@ -109,22 +122,57 @@ test("visibility toggle persists, hides from public catalog, and restores", asyn
     .toBe(true);
 });
 
+test("hidden product's real slug 404s publicly while visible in admin", async ({ request }) => {
+  // The admin list (authenticated) exposes the hidden draft's actual randomized slug;
+  // the public page and API — hit with the UNauthenticated `request` fixture — must 404 it.
+  const rows = (await (await page.request.get(`${API}/api/admin/products`)).json()).data as {
+    name: string;
+    slug: string;
+    isVisible: boolean;
+  }[];
+  const hidden = rows.find((r) => !r.isVisible);
+  test.skip(!hidden, "no hidden product seeded");
+  expect((await request.get(`${API}/api/products/${hidden!.slug}`)).status()).toBe(404);
+  expect((await request.get(`/products/${hidden!.slug}`)).status()).toBe(404);
+});
+
 test("create → edit → delete lifecycle persists at each step", async () => {
   const NAME = "E2E Validation Widget";
 
-  // CREATE (NEW product; defaults: PHONES / NEW / IN_STOCK / qty 1).
+  // A previous aborted run may have left this widget behind (the suite has no global
+  // teardown by design — each run self-heals here instead).
+  for (const stale of (await adminList()).filter((r) => r.name === NAME)) {
+    await page.request.delete(`${API}/api/admin/products/${stale.id}`);
+  }
+
+  // CREATE (NEW product; defaults: PHONES / NEW / IN_STOCK / qty 1), with a photo — drives
+  // the full signed-upload path: POST /uploads/sign → browser PUT to uploadUrl → key on create.
   await page.goto("/admin/products/new");
   await field("Name").fill(NAME);
   await field("Brand").fill("TestBrand");
   await field("Price (₦)").fill("123456");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "e2e.png",
+    mimeType: "image/png",
+    buffer: PNG_1PX,
+  });
+  // The thumbnail card (with its ✕ remove button) appears only after the signed PUT
+  // succeeded and the key landed in form state — the reliable "upload finished" signal.
+  await expect(page.getByRole("button", { name: "✕" })).toHaveCount(1);
   await page.getByRole("button", { name: "Create listing" }).click();
   await page.waitForURL(/\/admin$/);
-  await expect(page.getByText(NAME)).toBeVisible();
+  await expect(page.getByText(NAME).first()).toBeVisible();
 
   let row = byName(await adminList(), NAME);
   expect(row, "created product persisted").toBeTruthy();
   expect(row!.priceNaira).toBe(123456);
   const id = row!.id;
+
+  // The uploaded blob persisted and is publicly served.
+  expect(row!.images.length, "uploaded image attached to the product").toBeGreaterThan(0);
+  const img = await page.request.get(row!.images[0]!.url);
+  expect(img.ok(), "stored image URL serves").toBeTruthy();
+  expect(img.headers()["content-type"] ?? "").toContain("image/");
 
   // Appears on the public catalog too (create invalidates the cache).
   await expect

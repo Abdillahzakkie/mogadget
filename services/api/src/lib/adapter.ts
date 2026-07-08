@@ -1,5 +1,12 @@
 import type { Context } from "hono";
-import { env, runWithRequestContext, verifySession, type IEnvelope, type TBaseHandler } from "@mogadget/core";
+import {
+  clientIp,
+  env,
+  runWithRequestContext,
+  verifySession,
+  type IEnvelope,
+  type TBaseHandler,
+} from "@mogadget/core";
 
 export type TRouteCtx = { params: Promise<Record<string, string>> };
 
@@ -17,10 +24,15 @@ export async function runRoute(
 ): Promise<Response> {
   const token = readToken(c);
   const session = token ? await verifySession(token) : null;
+  // @hono/node-server exposes the raw socket; its address is the only client identity that
+  // can't be spoofed by request headers (clientIp only consults headers under TRUST_PROXY).
+  const socketIp = (c.env as { incoming?: { socket?: { remoteAddress?: string } } })?.incoming
+    ?.socket?.remoteAddress;
   const ctx = {
     session,
     requestId: crypto.randomUUID(),
     cookies: [] as { name: string; value: string; maxAge: number }[],
+    clientIp: clientIp(c.req.raw, socketIp),
   };
   const envelope: IEnvelope = await runWithRequestContext(ctx, () =>
     handler(c.req.raw, { params: Promise.resolve(c.req.param() as Record<string, string>) }),

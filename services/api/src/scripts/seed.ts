@@ -206,6 +206,13 @@ const DEMO = [
 ] as const;
 
 async function main() {
+  // Mirror bootstrap's refuse-insecure-defaults stance: never seed the well-known dev
+  // credentials into a production database.
+  if (process.env.NODE_ENV === "production" && OWNER_PASSWORD === "password") {
+    throw new Error(
+      "Refusing to seed the default owner password in production. Set SEED_OWNER_PASSWORD.",
+    );
+  }
   await bootstrap();
 
   // 1) IAM built-in policies + groups.

@@ -2,12 +2,14 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { ok, created, fail, handleError } from "./response";
 import { ErrNotFound, ErrInternal, isSentinel } from "../constants/errors";
 import { clientIp } from "./clientIp";
+import { env } from "../constants/environments";
 import { hashPassword, verifyPassword } from "./password";
 import { triggerRevalidate, revalidateTags } from "./revalidate";
 import {
   runWithRequestContext,
   getSessionUser,
   getRequestId,
+  getClientIp,
   issueSessionCookie,
   revokeSessionCookie,
   getQueuedCookies,
@@ -43,12 +45,18 @@ describe("error sentinels", () => {
 });
 
 describe("clientIp", () => {
-  it("prefers the first x-forwarded-for entry", () => {
-    expect(clientIp(reqWith({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" }))).toBe("1.2.3.4");
+  afterEach(() => {
+    env.trustProxy = false;
   });
-  it("falls back to x-real-ip then a default", () => {
+  it("ignores client-controlled forwarded headers by default (TRUST_PROXY off)", () => {
+    expect(clientIp(reqWith({ "x-forwarded-for": "1.2.3.4" }), "10.0.0.7")).toBe("10.0.0.7");
+    expect(clientIp(reqWith({ "x-real-ip": "9.9.9.9" }))).toBe("0.0.0.0");
+  });
+  it("prefers the first x-forwarded-for entry, then x-real-ip, when the proxy is trusted", () => {
+    env.trustProxy = true;
+    expect(clientIp(reqWith({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" }))).toBe("1.2.3.4");
     expect(clientIp(reqWith({ "x-real-ip": "9.9.9.9" }))).toBe("9.9.9.9");
-    expect(clientIp(reqWith({}))).toBe("0.0.0.0");
+    expect(clientIp(reqWith({}), "10.0.0.7")).toBe("10.0.0.7");
   });
 });
 
@@ -98,10 +106,11 @@ describe("triggerRevalidate", () => {
 describe("request context (AsyncLocalStorage)", () => {
   it("exposes session, request id and queued cookies inside a run", async () => {
     await runWithRequestContext(
-      { session: { sub: "u1", username: "owner" }, requestId: "req-1", cookies: [] },
+      { session: { sub: "u1", username: "owner" }, requestId: "req-1", cookies: [], clientIp: "10.1.2.3" },
       async () => {
         expect(getSessionUser()).toEqual({ sub: "u1", username: "owner" });
         expect(getRequestId()).toBe("req-1");
+        expect(getClientIp()).toBe("10.1.2.3");
         issueSessionCookie("mg_session", "tok", 100);
         revokeSessionCookie("stale");
         const cookies = getQueuedCookies();
@@ -113,6 +122,7 @@ describe("request context (AsyncLocalStorage)", () => {
   it("returns safe defaults outside any run", () => {
     expect(getSessionUser()).toBeNull();
     expect(getRequestId()).toBe("-");
+    expect(getClientIp()).toBeNull();
     expect(getQueuedCookies()).toEqual([]);
   });
 });

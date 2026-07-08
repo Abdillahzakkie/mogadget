@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { connectMongoDB, disconnectMongoDB } from "../databases/mongoDB";
 import { connectRedis, redis } from "../databases/redis";
 import { Permission } from "@mogadget/contracts/iam";
+import { env } from "../constants/environments";
 import { upsertPolicyByNameDB, Policy } from "../models/policies";
 import { upsertGroupByNameDB, Group } from "../models/groups";
 import { upsertUserByUsernameDB, User } from "../models/users";
@@ -55,6 +56,15 @@ afterAll(async () => {
 });
 
 describe("withRateLimit", () => {
+  // These tests identify callers via x-forwarded-for, which clientIp only honors when the
+  // proxy is trusted.
+  beforeAll(() => {
+    env.trustProxy = true;
+  });
+  afterAll(() => {
+    env.trustProxy = false;
+  });
+
   it("allows up to max then blocks with a 429", async () => {
     const wrapped = withRateLimit(async () => ok({ hit: true }), {
       scope: "mwtest-rl",
@@ -78,6 +88,24 @@ describe("withRateLimit", () => {
     expect(blocked.status).toBe(429);
     expect(blocked.body.message).toMatch(/\d+s/);
     await redis.del("rl:mwtest-def:22.22.22.22");
+  });
+
+  it("keys on the adapter-resolved context IP; spoofed forwarded headers can't rotate the bucket", async () => {
+    env.trustProxy = false;
+    const wrapped = withRateLimit(async () => ok({}), {
+      scope: "mwtest-ctx",
+      max: 1,
+      windowSeconds: 30,
+    });
+    const run = (spoofedXff: string) =>
+      runWithRequestContext(
+        { session: null, requestId: "r", cookies: [], clientIp: "203.0.113.9" },
+        () => wrapped(reqFrom(spoofedXff)),
+      );
+    expect((await run("1.1.1.1")).status).toBe(200);
+    // A different spoofed header from the same real client lands in the same bucket → blocked.
+    expect((await run("2.2.2.2")).status).toBe(429);
+    await redis.del("rl:mwtest-ctx:203.0.113.9");
   });
 });
 

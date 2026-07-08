@@ -10,6 +10,9 @@ export interface IRequestContext {
   session: ISessionPayload | null;
   requestId: string;
   cookies: IQueuedCookie[];
+  // Resolved once by the HTTP adapter (socket address + TRUST_PROXY policy) so downstream
+  // middleware never has to re-derive it from spoofable headers.
+  clientIp?: string;
 }
 const als = new AsyncLocalStorage<IRequestContext>();
 
@@ -21,6 +24,9 @@ export function getSessionUser(): ISessionPayload | null {
 }
 export function getRequestId(): string {
   return als.getStore()?.requestId ?? "-";
+}
+export function getClientIp(): string | null {
+  return als.getStore()?.clientIp ?? null;
 }
 export function issueSessionCookie(name: string, value: string, maxAge: number): void {
   als.getStore()?.cookies.push({ name, value, maxAge });
