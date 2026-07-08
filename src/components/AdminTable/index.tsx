@@ -5,8 +5,25 @@ import { CONDITION_LABEL } from "@/server/validators/constants";
 import type { IAdminProductDto, TStatus } from "@/server/validators/types";
 import { routes } from "../../constants/routes";
 import { formatNaira } from "../../helpers/format";
-import { useAdminProducts } from "../../hooks/products/useAdminProducts";
+import { useAdminProducts } from "../../hooks/Products/useAdminProducts";
 import { adminApi } from "../../lib/adminApi";
+import {
+  ClicksTd,
+  EditLink,
+  ErrorText,
+  MutedText,
+  NameTd,
+  PriceTd,
+  Row,
+  StatusPill,
+  SubText,
+  Table,
+  TableScroll,
+  Td,
+  Th,
+  ThumbBox,
+  VisibilityPill,
+} from "./styled";
 
 // The two product state machines (must never offer an invalid transition):
 //  RESTOCKABLE:  IN_STOCK ⇄ OUT_OF_STOCK
@@ -41,25 +58,23 @@ export function AdminTable() {
     }
   }
 
-  if (isLoading) return <p style={{ color: "var(--sold)" }}>Loading…</p>;
-  if (error) return <p style={{ color: "var(--danger)" }}>Failed to load products.</p>;
+  if (isLoading) return <MutedText>Loading…</MutedText>;
+  if (error) return <ErrorText>Failed to load products.</ErrorText>;
   if (products.length === 0) {
     return (
-      <p style={{ color: "var(--sold)" }}>
+      <MutedText>
         No products yet. <Link href={routes.adminNew}>Create your first listing →</Link>
-      </p>
+      </MutedText>
     );
   }
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={table}>
+    <TableScroll>
+      <Table>
         <thead>
           <tr>
             {["", "Name", "Condition", "Price", "Status", "Visible", "Clicks", ""].map((h, i) => (
-              <th key={i} style={th}>
-                {h}
-              </th>
+              <Th key={i}>{h}</Th>
             ))}
           </tr>
         </thead>
@@ -68,105 +83,52 @@ export function AdminTable() {
             const busy = busyId === p.id;
             const thumb = p.images[0]?.url;
             return (
-              <tr key={p.id} style={{ opacity: busy ? 0.5 : 1 }}>
-                <td style={td}>
-                  <div
-                    style={{ ...thumbBox, backgroundImage: thumb ? `url(${thumb})` : undefined }}
-                  />
-                </td>
-                <td style={{ ...td, fontWeight: 600 }}>
+              <Row key={p.id} $busy={busy}>
+                <Td>
+                  <ThumbBox $url={thumb} />
+                </Td>
+                <NameTd>
                   {p.name}
-                  <div style={{ font: "400 12px var(--font-body)", color: "var(--sold)" }}>
+                  <SubText>
                     {p.brand}
                     {p.cosmeticGrade ? ` · Grade ${p.cosmeticGrade}` : ""}
-                  </div>
-                </td>
-                <td style={td}>{CONDITION_LABEL[p.condition]}</td>
-                <td
-                  style={{
-                    ...td,
-                    fontFamily: "var(--font-display)",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {formatNaira(p.priceNaira)}
-                </td>
-                <td style={td}>
-                  <button
+                  </SubText>
+                </NameTd>
+                <Td>{CONDITION_LABEL[p.condition]}</Td>
+                <PriceTd>{formatNaira(p.priceNaira)}</PriceTd>
+                <Td>
+                  <StatusPill
                     type="button"
                     disabled={busy}
                     onClick={() => run(p.id, () => adminApi.setStatus(p.id, nextStatus(p)))}
                     title={`Set to ${STATUS_LABEL[nextStatus(p)]}`}
-                    style={{
-                      ...pill,
-                      borderColor: isPositive(p.status) ? "var(--brand)" : "var(--sold)",
-                      color: isPositive(p.status) ? "var(--brand)" : "var(--sold)",
-                    }}
+                    $positive={isPositive(p.status)}
                   >
                     {STATUS_LABEL[p.status]}
                     {typeof p.quantity === "number" ? ` (${p.quantity})` : ""}
-                  </button>
-                </td>
-                <td style={td}>
-                  <button
+                  </StatusPill>
+                </Td>
+                <Td>
+                  <VisibilityPill
                     type="button"
                     disabled={busy}
                     onClick={() => run(p.id, () => adminApi.setVisibility(p.id, !p.isVisible))}
-                    style={{
-                      ...pill,
-                      borderColor: p.isVisible ? "var(--ink)" : "var(--sold)",
-                      color: p.isVisible ? "var(--ink)" : "var(--sold)",
-                    }}
+                    $visible={p.isVisible}
                   >
                     {p.isVisible ? "Visible" : "Hidden"}
-                  </button>
-                </td>
-                <td style={{ ...td, color: "var(--sold)", fontSize: 13 }}>
+                  </VisibilityPill>
+                </Td>
+                <ClicksTd>
                   {p.whatsappClickCount}wa · {p.instagramClickCount}ig
-                </td>
-                <td style={td}>
-                  <Link href={routes.adminEdit(p.id)} style={{ font: "600 13px var(--font-body)" }}>
-                    Edit
-                  </Link>
-                </td>
-              </tr>
+                </ClicksTd>
+                <Td>
+                  <EditLink href={routes.adminEdit(p.id)}>Edit</EditLink>
+                </Td>
+              </Row>
             );
           })}
         </tbody>
-      </table>
-    </div>
+      </Table>
+    </TableScroll>
   );
 }
-
-const table = { width: "100%", borderCollapse: "collapse" as const, background: "#fff" };
-const th = {
-  textAlign: "left" as const,
-  font: "600 11px var(--font-body)",
-  letterSpacing: ".06em",
-  textTransform: "uppercase" as const,
-  color: "var(--sold)",
-  padding: "10px 12px",
-  borderBottom: "1px solid rgba(20,21,24,.10)",
-};
-const td = {
-  padding: "10px 12px",
-  borderBottom: "1px solid rgba(20,21,24,.06)",
-  fontSize: 14,
-  verticalAlign: "middle" as const,
-};
-const thumbBox = {
-  width: 44,
-  height: 44,
-  borderRadius: 8,
-  background: "#ECEAE3",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-};
-const pill = {
-  padding: "4px 10px",
-  borderRadius: 999,
-  border: "1.5px solid",
-  background: "transparent",
-  font: "600 12px var(--font-body)",
-  cursor: "pointer",
-};

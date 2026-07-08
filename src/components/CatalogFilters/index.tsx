@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { CSSProperties, FormEvent } from "react";
+import type { FormEvent } from "react";
 import { useCallback, useState } from "react";
 import {
   CATEGORIES,
@@ -9,6 +9,22 @@ import {
   CONDITIONS,
 } from "@/server/validators/constants";
 import type { IFacets } from "../../lib/publicApi";
+import {
+  ApplyButton,
+  CheckList,
+  CheckRow,
+  Chip,
+  Chips,
+  ClearButton,
+  GroupHeading,
+  GroupLabel,
+  Input,
+  Muted,
+  PriceInput,
+  PriceRow,
+  Rail,
+  SortSelect,
+} from "./styled";
 
 // Catalog filter rail (spec §9, screen 1b/1f). All state lives in the URL query string so
 // filtered views are shareable and server-rendered; this component only reads current
@@ -73,41 +89,33 @@ export function CatalogFilters({ facets }: { facets: IFacets }) {
     !!params.get("max");
 
   return (
-    <aside style={rail}>
+    <Rail>
       <form onSubmit={applyText}>
-        <label style={groupLabel} htmlFor="q">
-          Search
-        </label>
-        <input
+        <GroupLabel htmlFor="q">Search</GroupLabel>
+        <Input
           id="q"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="iPhone, MacBook, PS5…"
-          style={input}
         />
 
-        <div style={{ ...groupLabel, marginTop: 20 }}>Category</div>
-        <div style={chips}>
+        <GroupHeading>Category</GroupHeading>
+        <Chips>
           {CATEGORIES.map((cat) => {
             const count = facets.categories[cat] ?? 0;
             const on = activeCategory === cat;
             return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setCategory(cat)}
-                style={{ ...chip, ...(on ? chipOn : null) }}
-              >
-                {CATEGORY_LABEL[cat]} {count ? <span style={muted}>{count}</span> : null}
-              </button>
+              <Chip key={cat} type="button" onClick={() => setCategory(cat)} $on={on}>
+                {CATEGORY_LABEL[cat]} {count ? <Muted>{count}</Muted> : null}
+              </Chip>
             );
           })}
-        </div>
+        </Chips>
 
-        <div style={{ ...groupLabel, marginTop: 20 }}>Condition</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <GroupHeading>Condition</GroupHeading>
+        <CheckList>
           {CONDITIONS.map((cond) => (
-            <label key={cond} style={checkRow}>
+            <CheckRow key={cond}>
               <input
                 type="checkbox"
                 checked={activeConditions.includes(cond)}
@@ -115,111 +123,43 @@ export function CatalogFilters({ facets }: { facets: IFacets }) {
               />
               <span>
                 {CONDITION_LABEL[cond]}{" "}
-                {facets.conditions[cond] ? (
-                  <span style={muted}>{facets.conditions[cond]}</span>
-                ) : null}
+                {facets.conditions[cond] ? <Muted>{facets.conditions[cond]}</Muted> : null}
               </span>
-            </label>
+            </CheckRow>
           ))}
-        </div>
+        </CheckList>
 
-        <div style={{ ...groupLabel, marginTop: 20 }}>Price (₦)</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
+        <GroupHeading>Price (₦)</GroupHeading>
+        <PriceRow>
+          <PriceInput
             inputMode="numeric"
             value={min}
             onChange={(e) => setMin(e.target.value.replace(/\D/g, ""))}
             placeholder="Min"
-            style={{ ...input, width: "50%" }}
           />
-          <input
+          <PriceInput
             inputMode="numeric"
             value={max}
             onChange={(e) => setMax(e.target.value.replace(/\D/g, ""))}
             placeholder="Max"
-            style={{ ...input, width: "50%" }}
           />
-        </div>
+        </PriceRow>
 
-        <button type="submit" style={applyBtn}>
-          Apply
-        </button>
+        <ApplyButton type="submit">Apply</ApplyButton>
       </form>
 
-      <div style={{ ...groupLabel, marginTop: 20 }}>Sort</div>
-      <select value={activeSort} onChange={(e) => setSort(e.target.value)} style={input}>
+      <GroupHeading>Sort</GroupHeading>
+      <SortSelect value={activeSort} onChange={(e) => setSort(e.target.value)}>
         <option value="newest">Newest first</option>
         <option value="price_asc">Price: low to high</option>
         <option value="price_desc">Price: high to low</option>
-      </select>
+      </SortSelect>
 
       {hasFilters && (
-        <button type="button" onClick={clearAll} style={clearBtn}>
+        <ClearButton type="button" onClick={clearAll}>
           Clear all filters
-        </button>
+        </ClearButton>
       )}
-    </aside>
+    </Rail>
   );
 }
-
-const rail: CSSProperties = { display: "flex", flexDirection: "column" };
-const groupLabel: CSSProperties = {
-  font: "600 12px var(--font-body)",
-  letterSpacing: ".06em",
-  textTransform: "uppercase",
-  color: "rgba(20,21,24,.6)",
-  marginBottom: 10,
-  display: "block",
-};
-const input: CSSProperties = {
-  width: "100%",
-  padding: "9px 11px",
-  borderRadius: 9,
-  border: "1px solid rgba(20,21,24,.16)",
-  font: "400 15px var(--font-body)",
-  background: "#fff",
-};
-const chips: CSSProperties = { display: "flex", flexWrap: "wrap", gap: 8 };
-const chip: CSSProperties = {
-  padding: "6px 11px",
-  borderRadius: 999,
-  border: "1px solid rgba(20,21,24,.16)",
-  background: "#fff",
-  font: "500 13px var(--font-body)",
-  cursor: "pointer",
-  color: "var(--ink)",
-};
-const chipOn: CSSProperties = {
-  background: "var(--brand)",
-  color: "#fff",
-  borderColor: "var(--brand)",
-};
-const checkRow: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  font: "400 15px var(--font-body)",
-  cursor: "pointer",
-};
-const muted: CSSProperties = { color: "var(--sold)", fontSize: 12 };
-const applyBtn: CSSProperties = {
-  marginTop: 16,
-  width: "100%",
-  padding: "10px",
-  borderRadius: 9,
-  border: "none",
-  background: "var(--ink)",
-  color: "#fff",
-  font: "600 14px var(--font-body)",
-  cursor: "pointer",
-};
-const clearBtn: CSSProperties = {
-  marginTop: 16,
-  background: "none",
-  border: "none",
-  color: "var(--danger)",
-  font: "500 14px var(--font-body)",
-  cursor: "pointer",
-  textAlign: "left",
-  padding: 0,
-};

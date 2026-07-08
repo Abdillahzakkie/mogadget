@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  compiler: {
+    styledComponents: true,
+  },
   // Heavy native / server-only deps must not be bundled into the route-handler
   // bundles. They are loaded from node_modules at runtime.
   serverExternalPackages: [

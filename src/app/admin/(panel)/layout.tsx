@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { AdminHeader } from "../../../components/AdminHeader";
+import { AdminHeader } from "@/layouts/AdminHeader";
+import { PanelContainer, PanelRoot } from "@/layouts/Shells";
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh" }}>
+    <PanelRoot>
       <AdminHeader />
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "24px" }}>{children}</div>
-    </div>
+      <PanelContainer>{children}</PanelContainer>
+    </PanelRoot>
   );
 }

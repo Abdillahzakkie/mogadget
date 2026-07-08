@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { CatalogFilters } from "../../../components/CatalogFilters";
-import { ProductCard } from "../../../components/ProductCard";
-import { buildProductQuery, getFacets, getProducts } from "../../../lib/publicApi";
+import { buildProductQuery, getFacets, getProducts } from "@/lib/publicApi";
+import CatalogWrapper from "@/libs/CatalogWrapper";
 
 export const metadata: Metadata = {
   title: "Shop all gadgets — MoGadget",
@@ -19,45 +18,5 @@ export default async function CatalogPage({
   const sp = await searchParams;
   const [products, facets] = await Promise.all([getProducts(buildProductQuery(sp)), getFacets()]);
 
-  return (
-    <>
-      <div style={{ padding: "28px 0 4px" }}>
-        <h1 style={{ font: "600 30px var(--font-display)", margin: "0 0 6px" }}>
-          Shop all gadgets
-        </h1>
-        <p style={{ color: "rgba(20,21,24,.6)", margin: 0 }}>
-          {products.length} {products.length === 1 ? "listing" : "listings"}
-        </p>
-      </div>
-
-      <div className="catalog-layout">
-        <CatalogFilters facets={facets} />
-        <div>
-          {products.length === 0 ? (
-            <div style={empty}>
-              <p style={{ font: "600 18px var(--font-display)", margin: "0 0 6px" }}>
-                Nothing matches those filters.
-              </p>
-              <p style={{ color: "var(--sold)", margin: 0 }}>
-                Try widening your price range or clearing a filter.
-              </p>
-            </div>
-          ) : (
-            <div className="product-grid">
-              {products.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
+  return <CatalogWrapper products={products} facets={facets} />;
 }
-
-const empty = {
-  border: "1px dashed rgba(20,21,24,.18)",
-  borderRadius: 14,
-  padding: "48px 24px",
-  textAlign: "center" as const,
-};

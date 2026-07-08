@@ -1,6 +1,6 @@
 "use client";
-import type { CSSProperties } from "react";
-import { useAdminProducts } from "../../hooks/products/useAdminProducts";
+import { useAdminProducts } from "../../hooks/Products/useAdminProducts";
+import { StatCard, StatLabel, StatValue, Strip } from "./styled";
 
 // Catalog-wide analytics summary (spec M4): totals across all listings, derived from the
 // same admin product list the table renders (no extra endpoint).
@@ -24,31 +24,15 @@ export function AdminStats() {
   ];
 
   return (
-    <div style={strip}>
+    <Strip>
       {cards.map((c) => (
-        <div key={c.label} style={card}>
-          <div
-            className="price"
-            style={{ fontSize: 24, fontWeight: 700, color: c.accent ?? "var(--ink)" }}
-          >
+        <StatCard key={c.label}>
+          <StatValue className="price" $accent={c.accent}>
             {c.value}
-          </div>
-          <div style={{ color: "var(--sold)", font: "500 12px var(--font-body)" }}>{c.label}</div>
-        </div>
+          </StatValue>
+          <StatLabel>{c.label}</StatLabel>
+        </StatCard>
       ))}
-    </div>
+    </Strip>
   );
 }
-
-const strip: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-  gap: 12,
-  marginBottom: 20,
-};
-const card: CSSProperties = {
-  background: "#fff",
-  border: "1px solid rgba(20,21,24,.1)",
-  borderRadius: 12,
-  padding: "14px 16px",
-};
