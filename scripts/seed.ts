@@ -1,20 +1,26 @@
 import {
   bootstrap,
   disconnectMongoDB,
+  env,
   generateSlug,
   hashPassword,
   models,
   newImageKey,
-  writeLocalBlob,
+  putImageBlob,
+  sniffImageType,
+  storageDriver,
 } from "../src/server";
 import { iam } from "../src/server/validators";
 
 const OWNER_USERNAME = process.env.SEED_OWNER_USERNAME ?? "owner";
 const OWNER_PASSWORD = process.env.SEED_OWNER_PASSWORD ?? "password";
 
-// Real product photos, keyed by product name. Downloaded at seed time and stored as
-// local blobs (served by the API at /uploads/*), so the catalog has valid images with no
-// render-time network dependency. Two entries → the detail-page gallery has a thumbnail to switch.
+// Real product photos, keyed by product name. Downloaded at seed time, validated as
+// genuine images (magic-byte sniff), and stored through the configured storage driver
+// (local disk or S3). Two entries → the detail-page gallery has a thumbnail to switch.
+// If a download fails or the payload isn't a real image, that image is DROPPED — never
+// substituted with an unrelated stock photo. A product left with no valid image renders
+// the UI's built-in no-image placeholder.
 const IMAGE_SOURCES: Record<string, string[]> = {
   "iPhone 13 128GB Midnight": [
     "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=1000&q=70&fm=jpg",
@@ -47,31 +53,43 @@ const IMAGE_SOURCES: Record<string, string[]> = {
   ],
 };
 
-// Guaranteed-valid deterministic fallback if a curated photo fails to download.
-function fallbackUrl(name: string, i: number): string {
-  const seed = encodeURIComponent(`${name}-${i}`.replace(/[^A-Za-z0-9]/g, ""));
-  return `https://picsum.photos/seed/${seed}/1000/750.jpg`;
+// Fetch image bytes with a few retries — transient CDN blips are common and shouldn't
+// cost a product its photo. Returns the raw body only when the response is OK and
+// non-trivial; genuine-image validation is done separately by sniffImageType, so a lying
+// `image/*` content-type can't smuggle an HTML error page through.
+async function fetchImage(url: string): Promise<Uint8Array | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(url, { redirect: "follow" });
+      if (r.ok) {
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        if (bytes.byteLength > 512) return bytes;
+      }
+    } catch {
+      // network error — fall through to retry
+    }
+    if (attempt < 2) await new Promise((res) => setTimeout(res, 500 * (attempt + 1)));
+  }
+  return null;
 }
 
-async function fetchImage(url: string): Promise<Uint8Array | null> {
-  try {
-    const r = await fetch(url, { redirect: "follow" });
-    if (!r.ok) return null;
-    const ct = r.headers.get("content-type") ?? "";
-    if (!ct.startsWith("image/")) return null;
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    return bytes.byteLength > 512 ? bytes : null; // reject tiny/error payloads
-  } catch {
+// Download → validate it's a real image → store through the driver → return the key.
+// A download/validation failure returns null (image dropped, no substitution). A storage
+// failure THROWS, so an S3 misconfiguration surfaces at once instead of silently
+// dropping every image.
+async function seedImage(name: string, url: string): Promise<string | null> {
+  const bytes = await fetchImage(url);
+  if (!bytes) {
+    console.warn(`  ! ${name}: image download failed after retries — dropped`);
     return null;
   }
-}
-
-// Download → store as a local blob → return the storage key. Falls back to Picsum, then null.
-async function seedImage(name: string, url: string, i: number): Promise<string | null> {
-  const bytes = (await fetchImage(url)) ?? (await fetchImage(fallbackUrl(name, i)));
-  if (!bytes) return null;
-  const key = newImageKey("jpg");
-  await writeLocalBlob(key, bytes);
+  const sniff = sniffImageType(bytes);
+  if (!sniff) {
+    console.warn(`  ! ${name}: downloaded payload is not a valid image — dropped`);
+    return null;
+  }
+  const key = newImageKey(sniff.ext);
+  await putImageBlob(key, bytes, sniff.contentType);
   return key;
 }
 
@@ -213,6 +231,23 @@ async function main() {
       "Refusing to seed the default owner password in production. Set SEED_OWNER_PASSWORD.",
     );
   }
+
+  // Seeding into S3? Fail fast on missing config rather than downloading every image and
+  // watching each upload error out. (The credentials themselves are validated by the AWS
+  // SDK on the first PutObject.)
+  if (storageDriver() === "s3") {
+    const unset = (v: string) => !v || v.includes("<<<");
+    const missing: string[] = [];
+    if (unset(env.s3Bucket)) missing.push("AWS_S3_BUCKET");
+    if (unset(env.cdnBaseUrl)) missing.push("CDN_BASE_URL");
+    if (missing.length) {
+      throw new Error(
+        `STORAGE_DRIVER=s3 but ${missing.join(", ")} not set. Set them (plus AWS ` +
+          "credentials), or use STORAGE_DRIVER=local for local seeding.",
+      );
+    }
+  }
+
   await bootstrap();
 
   // 1) IAM built-in policies + groups.
@@ -252,7 +287,7 @@ async function main() {
     const sources = IMAGE_SOURCES[d.name] ?? [];
     const images: { key: string; sortOrder: number }[] = [];
     for (let i = 0; i < sources.length; i++) {
-      const key = await seedImage(d.name, sources[i]!, i);
+      const key = await seedImage(d.name, sources[i]!);
       if (key) images.push({ key, sortOrder: i });
     }
     imageCount += images.length;
