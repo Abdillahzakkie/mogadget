@@ -123,6 +123,21 @@ full list.
 
 See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (plans).
 
+## Branching
+
+- **`develop`** — integration + testing branch; all work lands here first.
+- **`master`** — stable line; advances only by merging a tested `develop` (open a PR).
+
+A versioned pre-push hook (`.githooks/pre-push`) blocks direct pushes to `master`.
+Activate it once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+(One-off override for a deliberate direct push: `git push --no-verify`. Server-side
+protection isn't enabled because the repo is a private repo on GitHub's free plan.)
+
 ## Conventions
 
 - Response envelope is always `{ code, message, data }`; handlers return `IEnvelope`, and
