@@ -44,7 +44,7 @@
     "@vitest/coverage-v8": "2.1.9",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.6"
   },
   "packageManager": "yarn@1.22.22"
 }
