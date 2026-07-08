@@ -30,6 +30,15 @@ describe("storage keys", () => {
   it("defaults to the local driver", () => {
     expect(storageDriver()).toBe("local");
   });
+  it("selects the s3 driver when configured", () => {
+    const prev = env.storageDriver;
+    env.storageDriver = "s3";
+    try {
+      expect(storageDriver()).toBe("s3");
+    } finally {
+      env.storageDriver = prev;
+    }
+  });
 });
 
 describe("signUpload (local driver)", () => {

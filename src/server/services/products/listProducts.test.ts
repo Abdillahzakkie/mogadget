@@ -43,4 +43,12 @@ describe("products service caching", () => {
     await createProduct({ ...input, name: "Svc Test Phone 2" } as never);
     expect(await redis.get(getQueryKey({ category: "PHONES" }))).toBeNull();
   });
+  it("never caches an empty result set", async () => {
+    const filter = { max: 1 }; // nothing costs ≤ ₦1
+    expect(await listProducts(filter)).toEqual([]);
+    expect(await redis.get(getQueryKey(filter))).toBeNull();
+  });
+  it("keys array filters by joining values", () => {
+    expect(getQueryKey({ condition: ["NEW", "UK_USED"] })).toContain("NEW,UK_USED");
+  });
 });

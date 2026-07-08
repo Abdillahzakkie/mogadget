@@ -26,6 +26,15 @@ describe("policy action validation", () => {
   });
 });
 
+describe("expandActions", () => {
+  it("silently ignores unknown actions instead of granting them", () => {
+    expect(expandActions(["billing:read", "nonsense"])).toEqual([]);
+    expect(expandActions(["billing:*", Permission.ProductsWrite])).toEqual([
+      Permission.ProductsWrite,
+    ]);
+  });
+});
+
 describe("compileStatements", () => {
   it("expands a wildcard action to all permissions", () => {
     const perms = compileStatements([{ effect: "Allow", actions: ["*"] }]);

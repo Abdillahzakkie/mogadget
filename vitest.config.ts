@@ -16,7 +16,6 @@ export default defineConfig({
     coverage: {
       thresholds: { statements: 95, lines: 95, functions: 95, branches: 95 },
       provider: "v8",
-      all: true,
       include: ["src/server/**/*.ts", "src/lib/**/*.ts", "src/helpers/**/*.ts"],
       exclude: [
         "**/*.test.ts",

@@ -54,6 +54,9 @@ npx vitest run --coverage     # coverage report + threshold gate
 # End-to-end (real browser → app → DB). Start Mongo/Redis + seed first, then:
 yarn build
 SITE_URL=http://localhost:3100 yarn start -p 3100 &
+# ISR pages prerender empty at build time (no server to self-fetch); the first hit
+# triggers revalidation. Warm the cache before asserting freshness:
+curl -s http://localhost:3100/ >/dev/null && sleep 3 && curl -s http://localhost:3100/ >/dev/null
 E2E_BASE_URL=http://localhost:3100 yarn e2e          # Playwright specs, every public + admin route
 ```
 

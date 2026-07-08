@@ -155,4 +155,19 @@ describe("product services (mutations + caching)", () => {
     const again = await productFacets();
     expect(again).toEqual(facets);
   });
+
+  it("listProducts defaults to the public unfiltered listing when called bare", async () => {
+    const { default: listProducts } = await import("./listProducts");
+    const rows = await listProducts();
+    expect(Array.isArray(rows)).toBe(true);
+    // Bare call must never leak hidden products (public default).
+    expect(rows.every((r) => r.isVisible)).toBe(true);
+  });
+
+  it("invalidateCacheKeys with no slug still clears the list + facets caches", async () => {
+    const { default: invalidateCacheKeys } = await import("./utils/invalidateCacheKeys");
+    await redis.set(FACETS_KEY, JSON.stringify({}));
+    await invalidateCacheKeys();
+    expect(await redis.get(FACETS_KEY)).toBeNull();
+  });
 });

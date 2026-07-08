@@ -165,6 +165,24 @@ describe("withApiHandler", () => {
     expect((await viaCookie.json()).data.user).toBe("mwtest-admin");
     expect(viaCookie.headers.get("set-cookie")).toMatch(/mg_session=fresh.*Max-Age=100/);
   });
+  it("marks session cookies Secure in production", async () => {
+    const { issueSessionCookie } = await import("../lib/requestContext");
+    const h = withApiHandler({ route: "/api/test/ok" }, async () => {
+      issueSessionCookie("mg_session", "tok", 60);
+      return ok({});
+    });
+    env.isProduction = true;
+    try {
+      const res = await h(new Request("http://x"), undefined);
+      expect(res.headers.get("set-cookie")).toContain("; Secure");
+    } finally {
+      env.isProduction = false;
+    }
+  });
+  it("connectMongoDB is idempotent once the connection is live", async () => {
+    // beforeAll already connected; a second call must take the ready-state fast path.
+    await expect(connectMongoDB()).resolves.toBeUndefined();
+  });
 });
 
 describe("permission gating", () => {
