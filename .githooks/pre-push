@@ -1,0 +1,15 @@
+#!/bin/sh
+# Guard: forbid direct pushes to master. master advances only via merged PRs.
+# Bypass for a deliberate one-off with: git push --no-verify
+protected="master"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/"$protected")
+      echo "✋ Direct push to '$protected' is blocked."
+      echo "   Work on 'develop', open a PR, and merge master through it."
+      echo "   (Intentional override: git push --no-verify)"
+      exit 1
+      ;;
+  esac
+done
+exit 0

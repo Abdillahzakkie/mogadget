@@ -15,7 +15,7 @@ async function isValid(token: string | undefined): Promise<boolean> {
   }
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("mg_session")?.value;
   const authed = await isValid(token);

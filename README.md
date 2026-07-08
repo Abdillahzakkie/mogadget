@@ -86,8 +86,8 @@ valid images out of the box.
 
 ### Admin
 
-Sign in at `/admin/login` (seeded `owner` / `password`). The Next edge middleware verifies the
-`mg_session` cookie for every `/admin/**` route; every mutating API route also re-checks
+Sign in at `/admin/login` (seeded `owner` / `password`). The Next edge proxy (`src/proxy.ts`)
+verifies the `mg_session` cookie for every `/admin/**` route; every mutating API route also re-checks
 `products:write`. Images upload straight from the browser to a signed URL — the browser never holds a
 storage write key.
 
@@ -122,6 +122,21 @@ URLs), `NEXT_PUBLIC_SITE_URL` (inlined for client-side WhatsApp links). See `.en
 full list.
 
 See `docs/superpowers/specs/` (design) and `docs/superpowers/plans/` (plans).
+
+## Branching
+
+- **`develop`** — integration + testing branch; all work lands here first.
+- **`master`** — stable line; advances only by merging a tested `develop` (open a PR).
+
+A versioned pre-push hook (`.githooks/pre-push`) blocks direct pushes to `master`.
+Activate it once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+(One-off override for a deliberate direct push: `git push --no-verify`. Server-side
+protection isn't enabled because the repo is a private repo on GitHub's free plan.)
 
 ## Conventions
 
