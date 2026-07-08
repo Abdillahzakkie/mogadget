@@ -257,18 +257,15 @@ async function main() {
     );
   }
 
-  // Seeding into S3? Fail fast on missing config rather than downloading every image and
-  // watching each upload error out. (The credentials themselves are validated by the AWS
-  // SDK on the first PutObject.)
+  // Seeding into S3? Fail fast on a missing bucket rather than uploading every image and
+  // watching each PutObject error out. (Credentials are validated by the AWS SDK on the first
+  // PutObject; display uses presigned GET URLs, so no CDN/public-read config is needed.)
   if (storageDriver() === "s3") {
     const unset = (v: string) => !v || v.includes("<<<");
-    const missing: string[] = [];
-    if (unset(env.s3Bucket)) missing.push("AWS_S3_BUCKET");
-    if (unset(env.cdnBaseUrl)) missing.push("CDN_BASE_URL");
-    if (missing.length) {
+    if (unset(env.s3Bucket)) {
       throw new Error(
-        `STORAGE_DRIVER=s3 but ${missing.join(", ")} not set. Set them (plus AWS ` +
-          "credentials), or use STORAGE_DRIVER=local for local seeding.",
+        "STORAGE_DRIVER=s3 but AWS_S3_BUCKET is not set. Set it (plus AWS credentials), " +
+          "or use STORAGE_DRIVER=local for local seeding.",
       );
     }
   }

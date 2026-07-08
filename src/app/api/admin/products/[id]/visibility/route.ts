@@ -29,7 +29,7 @@ export const POST = withApiHandler<ICtx>(
         const doc = await services.products.setVisibility({ id, isVisible });
         if (!doc) throw ErrNotFound;
         triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
-        return ok(toAdminProduct(doc));
+        return ok(await toAdminProduct(doc));
       },
       { action: "product.setVisibility", targetType: "product", captureBody: true },
     )(req);

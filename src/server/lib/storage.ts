@@ -58,12 +58,39 @@ export function newImageKey(ext: string): string {
   return `products/${crypto.randomUUID()}.${clean}`;
 }
 
-export function resolveImageUrl(key: string): string {
+/* v8 ignore start -- S3 client factory, exercised only against a live bucket */
+let _s3Client: Promise<import("@aws-sdk/client-s3").S3Client> | null = null;
+function s3Client() {
+  if (!_s3Client) {
+    _s3Client = import("@aws-sdk/client-s3").then(
+      ({ S3Client }) => new S3Client({ region: env.s3Region }),
+    );
+  }
+  return _s3Client;
+}
+/* v8 ignore stop */
+
+// Image key → a URL the browser can load.
+//   local: same-origin /uploads path (served by src/app/uploads/[...key]).
+//   s3:    a short-lived *presigned GET* URL, so the bucket stays fully private — no
+//          public-read, no CDN required. Presigning itself is a local signing operation
+//          (no network round-trip); it's async only because AWS credential resolution is.
+// CAVEAT: presigned URLs expire after env.s3SignedUrlTtlSeconds. Any cache that outlives the
+// TTL (long-lived ISR/static HTML holding the URL) will serve an expired link until it
+// revalidates. The default TTL (1h) sits well above the 300s fetch-revalidate window.
+export async function resolveImageUrl(key: string): Promise<string> {
   if (/^https?:\/\//.test(key)) return key;
-  /* v8 ignore next -- S3 driver path, integration-tested against AWS, not in unit coverage */
-  if (storageDriver() === "s3") return `${env.cdnBaseUrl.replace(/\/$/, "")}/${key}`;
-  // Same-origin static serve (src/app/uploads/[...key]) — a relative URL keeps the
-  // stored DTOs portable across dev/prod hostnames.
+  /* v8 ignore start -- S3 driver path: requires AWS SDK + live bucket, integration-tested */
+  if (storageDriver() === "s3") {
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+    return getSignedUrl(
+      await s3Client(),
+      new GetObjectCommand({ Bucket: env.s3Bucket, Key: key }),
+      { expiresIn: env.s3SignedUrlTtlSeconds },
+    );
+  }
+  /* v8 ignore stop */
   return `/uploads/${key}`;
 }
 
@@ -74,15 +101,14 @@ export async function signUpload(input: {
   const key = newImageKey(input.ext);
   /* v8 ignore start -- S3 driver path: requires AWS SDK + live bucket, integration-tested, excluded from unit coverage */
   if (storageDriver() === "s3") {
-    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-    const client = new S3Client({ region: env.s3Region });
     const uploadUrl = await getSignedUrl(
-      client,
+      await s3Client(),
       new PutObjectCommand({ Bucket: env.s3Bucket, Key: key, ContentType: input.contentType }),
       { expiresIn: 300 },
     );
-    return { key, uploadUrl, publicUrl: resolveImageUrl(key) };
+    return { key, uploadUrl, publicUrl: await resolveImageUrl(key) };
   }
   /* v8 ignore stop */
   // The blob route re-namespaces under products/, and the route's [key] segment matches a
@@ -92,7 +118,7 @@ export async function signUpload(input: {
   return {
     key,
     uploadUrl: `/api/admin/uploads/blob/${fileName}`,
-    publicUrl: resolveImageUrl(key),
+    publicUrl: await resolveImageUrl(key),
   };
 }
 

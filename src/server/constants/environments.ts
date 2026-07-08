@@ -14,5 +14,7 @@ export const env = {
   localUploadDir: process.env.LOCAL_UPLOAD_DIR ?? ".uploads",
   s3Bucket: process.env.AWS_S3_BUCKET ?? "",
   s3Region: process.env.AWS_REGION ?? "us-east-1",
-  cdnBaseUrl: process.env.CDN_BASE_URL ?? "",
+  // TTL for presigned S3 GET URLs (image display). Kept well above the page revalidate
+  // window (default fetch revalidate is 300s) so ISR-cached pages don't serve expired URLs.
+  s3SignedUrlTtlSeconds: Number(process.env.S3_SIGNED_URL_TTL ?? 60 * 60),
 };

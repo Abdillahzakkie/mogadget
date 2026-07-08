@@ -34,7 +34,7 @@ export const POST = withApiHandler<ICtx>(
         const doc = await services.products.updateProduct({ id, patch: { images } });
         if (!doc) throw ErrNotFound;
         triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
-        return ok(toAdminProduct(doc));
+        return ok(await toAdminProduct(doc));
       },
       { action: "product.setImages", targetType: "product", captureBody: true },
     )(req);

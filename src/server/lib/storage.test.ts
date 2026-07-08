@@ -31,11 +31,11 @@ describe("storage keys", () => {
     expect(newImageKey("pn!g")).toMatch(/\.png$/);
     expect(newImageKey("###")).toMatch(/\.jpg$/); // all chars stripped → fallback
   });
-  it("resolves a local key to the same-origin /uploads path", () => {
-    expect(resolveImageUrl("products/abc.jpg")).toBe("/uploads/products/abc.jpg");
+  it("resolves a local key to the same-origin /uploads path", async () => {
+    expect(await resolveImageUrl("products/abc.jpg")).toBe("/uploads/products/abc.jpg");
   });
-  it("passes through already-absolute urls (M1 seed data)", () => {
-    expect(resolveImageUrl("https://cdn.example/x.jpg")).toBe("https://cdn.example/x.jpg");
+  it("passes through already-absolute urls (M1 seed data)", async () => {
+    expect(await resolveImageUrl("https://cdn.example/x.jpg")).toBe("https://cdn.example/x.jpg");
   });
   it("defaults to the local driver", () => {
     expect(storageDriver()).toBe("local");
@@ -61,7 +61,7 @@ describe("signUpload (local driver)", () => {
     // The route's [key] matches one segment, so the upload URL carries only the filename.
     const fileName = key.split("/").pop()!;
     expect(uploadUrl).toBe(`/api/admin/uploads/blob/${fileName}`);
-    expect(publicUrl).toBe(resolveImageUrl(key));
+    expect(publicUrl).toBe(await resolveImageUrl(key));
   });
 });
 

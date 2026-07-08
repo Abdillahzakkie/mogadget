@@ -26,7 +26,7 @@ export const GET = withApiHandler<ICtx>(
     await requirePermission(Permission.ProductsWrite);
     const doc = await getProductByIdDB({ id: (await ctx.params).id });
     if (!doc) throw ErrNotFound;
-    return ok(toAdminProduct(doc));
+    return ok(await toAdminProduct(doc));
   },
 );
 
@@ -41,7 +41,7 @@ export const PATCH = withApiHandler<ICtx>(
         const doc = await services.products.updateProduct({ id, patch });
         if (!doc) throw ErrNotFound;
         triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
-        return ok(toAdminProduct(doc));
+        return ok(await toAdminProduct(doc));
       },
       { action: "product.update", targetType: "product", captureBody: true },
     )(req);

@@ -1,9 +1,10 @@
 import { type IProduct, resolveImageUrl } from "@/server";
 import type { IAdminProductDto, IProductDto } from "@/server/validators/types";
 
-// Image `key` → public `url` via the storage driver (local disk /uploads or S3 CDN).
-// Already-absolute keys (M1 seed data) pass through unchanged.
-export function toPublicProduct(p: IProduct): IProductDto {
+// Image `key` → public `url` via the storage driver (local disk /uploads, or a presigned S3
+// GET URL). Already-absolute keys (M1 seed data) pass through unchanged. Async because S3
+// presigning is — resolveImageUrl returns a Promise, so images are resolved with Promise.all.
+export async function toPublicProduct(p: IProduct): Promise<IProductDto> {
   return {
     id: String(p._id),
     slug: p.slug,
@@ -17,9 +18,11 @@ export function toPublicProduct(p: IProduct): IProductDto {
     stockType: p.stockType,
     status: p.status,
     quantity: p.quantity,
-    images: [...p.images]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((i) => ({ url: resolveImageUrl(i.key), sortOrder: i.sortOrder })),
+    images: await Promise.all(
+      [...p.images]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(async (i) => ({ url: await resolveImageUrl(i.key), sortOrder: i.sortOrder })),
+    ),
     specs: p.specs,
     whatsappClickCount: p.whatsappClickCount,
     instagramClickCount: p.instagramClickCount,
@@ -29,12 +32,14 @@ export function toPublicProduct(p: IProduct): IProductDto {
 }
 
 // Admin DTO = public DTO + visibility flag + image storage keys (so edit can round-trip images).
-export function toAdminProduct(p: IProduct): IAdminProductDto {
+export async function toAdminProduct(p: IProduct): Promise<IAdminProductDto> {
   return {
-    ...toPublicProduct(p),
+    ...(await toPublicProduct(p)),
     isVisible: p.isVisible,
-    images: [...p.images]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((i) => ({ key: i.key, url: resolveImageUrl(i.key), sortOrder: i.sortOrder })),
+    images: await Promise.all(
+      [...p.images]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(async (i) => ({ key: i.key, url: await resolveImageUrl(i.key), sortOrder: i.sortOrder })),
+    ),
   };
 }
