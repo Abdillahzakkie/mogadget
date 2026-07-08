@@ -86,8 +86,8 @@ valid images out of the box.
 
 ### Admin
 
-Sign in at `/admin/login` (seeded `owner` / `password`). The Next edge middleware verifies the
-`mg_session` cookie for every `/admin/**` route; every mutating API route also re-checks
+Sign in at `/admin/login` (seeded `owner` / `password`). The Next edge proxy (`src/proxy.ts`)
+verifies the `mg_session` cookie for every `/admin/**` route; every mutating API route also re-checks
 `products:write`. Images upload straight from the browser to a signed URL — the browser never holds a
 storage write key.
 
