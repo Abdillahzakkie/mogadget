@@ -8,6 +8,12 @@ import { Navbar } from "@/layouts/Navbar";
 import { SiteMain } from "@/layouts/Shells";
 import { services } from "@/server";
 
+// The public shell reads the live, editable site config (contact channels, SEO, and the
+// maintenance gate) on every request. Rendering dynamically — against the Redis-cached config,
+// so it stays cheap — means an admin's save takes effect on the very next page load instead of
+// waiting for an ISR revalidation window. Product data keeps its own service-level caching.
+export const dynamic = "force-dynamic";
+
 // Public SEO defaults come from the editable site config, falling back to the seeded defaults.
 export async function generateMetadata(): Promise<Metadata> {
   const cfg = await services.siteConfig.getSiteConfig();

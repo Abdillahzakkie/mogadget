@@ -1,5 +1,5 @@
 import { redisUpdateKeyString } from "../../databases/redis";
-import { triggerRevalidatePath } from "../../lib/revalidate";
+import { revalidatePathNow } from "../../lib/revalidate";
 import { upsertSiteConfigDB } from "../../models/siteConfig";
 import type { ISiteConfig, ISiteConfigPatch } from "../../models/siteConfig/types";
 import { applyConfigPatch, mergeWithDefaults } from "./defaults";
@@ -19,6 +19,8 @@ export default async function updateSiteConfig(
   if (!saved) return null;
   const result = mergeWithDefaults(saved);
   await redisUpdateKeyString(SITE_CONFIG_CACHE_KEY, result, true, TTL);
-  triggerRevalidatePath("/", "layout");
+  // Await the purge so the save doesn't report success until the public site will serve the new
+  // config on the next request (maintenance mode / contact / SEO must take effect immediately).
+  await revalidatePathNow("/", "layout");
   return result;
 }

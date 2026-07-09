@@ -37,3 +37,19 @@ export function triggerRevalidatePath(path: string, type: "page" | "layout" = "l
       getLogger().warn(`revalidatePath failed: ${String(err)}`);
     });
 }
+
+// Awaited variant: resolves only after the path is marked stale. Used where the caller must not
+// report success until the public cache is guaranteed purged (e.g. a site-config save that flips
+// maintenance mode — the admin expects it to take effect on the very next page load). Never throws
+// into the request path; outside a Next request scope (unit tests/seed) it resolves quietly.
+export async function revalidatePathNow(
+  path: string,
+  type: "page" | "layout" = "layout",
+): Promise<void> {
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath(path, type);
+  } catch (err) {
+    getLogger().warn(`revalidatePath failed: ${String(err)}`);
+  }
+}
