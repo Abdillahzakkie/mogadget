@@ -107,6 +107,42 @@ export async function updateUserPasswordDB({
   }
 }
 
+// ── IAM management helpers ────────────────────────────────────────────────────
+export async function listUsersDB(): Promise<IUser[]> {
+  try {
+    return await User.find().sort({ createdAt: 1 }).lean<IUser[]>();
+  } catch {
+    return [];
+  }
+}
+export async function updateUserAccessDB({
+  id,
+  groupIds,
+  attachedPolicyIds,
+}: {
+  id: string;
+  groupIds: string[];
+  attachedPolicyIds: string[];
+}): Promise<IUser | null> {
+  try {
+    return await User.findByIdAndUpdate(
+      id,
+      { $set: { groupIds, attachedPolicyIds } },
+      { returnDocument: "after" },
+    ).lean<IUser>();
+  } catch {
+    return null;
+  }
+}
+export async function deleteUserDB({ id }: { id: string }): Promise<boolean> {
+  try {
+    const res = await User.deleteOne({ _id: id });
+    return res.deletedCount > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Map a raw user document to the client-safe profile DTO (drops passwordHash, fills defaults).
 export function toUserProfileDto(u: IUser): IUserProfileDto {
   return {
