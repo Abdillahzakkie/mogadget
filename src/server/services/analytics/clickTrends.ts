@@ -12,14 +12,15 @@ export default async function clickTrends({
   days?: number;
   now?: Date;
 }): Promise<IClickTrends> {
-  const window = VALID_DAYS.includes(days ?? DEFAULT_DAYS) ? (days as number) : DEFAULT_DAYS;
+  const requested = days ?? DEFAULT_DAYS;
+  const windowDays = VALID_DAYS.includes(requested) ? requested : DEFAULT_DAYS;
   const at = now ?? new Date();
 
   // Start of the earliest day in range, at 00:00 UTC.
   const since = new Date(at);
-  since.setUTCDate(since.getUTCDate() - (window - 1));
+  since.setUTCDate(since.getUTCDate() - (windowDays - 1));
   since.setUTCHours(0, 0, 0, 0);
 
   const rows = await clicksByDayDB({ since });
-  return buildTrendSeries({ now: at, days: window, rows });
+  return buildTrendSeries({ now: at, days: windowDays, rows });
 }

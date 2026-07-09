@@ -53,4 +53,13 @@ describe("clickEvents aggregation + clickTrends service", () => {
     expect(out.totals.whatsapp).toBe(3);
     expect(out.totals.instagram).toBe(1);
   });
+
+  it("clickTrends defaults to a dense 30-day window when days is omitted", async () => {
+    const { default: clickTrends } = await import("./clickTrends");
+    const now = new Date("2026-06-10T12:00:00.000Z");
+    const out = await clickTrends({ now });
+    expect(out.days).toBe(30);
+    expect(out.series).toHaveLength(30);
+    expect(out.series[out.series.length - 1].date).toBe("2026-06-10");
+  });
 });
