@@ -1,6 +1,6 @@
 "use client";
 import type { CSSProperties } from "react";
-import { CONTACT } from "@/server/validators/constants";
+import { useSiteConfig } from "@/components/SiteConfigProvider";
 import { SITE_URL } from "../../constants/site";
 import { instagramLink, whatsappLink } from "../../helpers/format";
 import { fireClickBeacon } from "../../lib/beacon";
@@ -24,8 +24,9 @@ export function WhatsAppButton({
   label?: string;
   style?: CSSProperties;
 }) {
+  const { contact } = useSiteConfig();
   const href = whatsappLink({
-    phone: CONTACT.whatsapp,
+    phone: contact.whatsapp,
     name: product.name,
     priceNaira: product.priceNaira,
     slug: product.slug,
@@ -47,9 +48,10 @@ export function WhatsAppButton({
 
 // Secondary Instagram link (neutral styling — the green is reserved for WhatsApp).
 export function InstagramCta({ product }: { product: ChatProduct }) {
+  const { contact } = useSiteConfig();
   return (
     <InstagramAnchor
-      href={instagramLink(CONTACT.instagram)}
+      href={instagramLink(contact.instagram)}
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => fireClickBeacon(product.slug, "instagram")}

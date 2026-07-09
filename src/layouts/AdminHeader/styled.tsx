@@ -1,6 +1,21 @@
 import Link from "next/link";
 import styled from "styled-components";
 
+export const NavLink = styled(Link)`
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--ink);
+  font: 600 13px var(--font-body);
+
+  &:hover {
+    color: var(--ink);
+    background: rgba(20, 21, 24, 0.05);
+  }
+`;
+
 export const Bar = styled.header`
   display: flex;
   justify-content: space-between;

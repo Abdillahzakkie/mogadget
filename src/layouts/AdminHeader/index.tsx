@@ -8,6 +8,7 @@ import {
   Bar,
   BrandAccent,
   LogoutButton,
+  NavLink,
   NewListingLink,
   WordmarkLink,
 } from "./styled";
@@ -31,6 +32,7 @@ export function AdminHeader() {
         <AdminTag>admin</AdminTag>
       </WordmarkLink>
       <Actions>
+        <NavLink href={routes.adminSettings}>Settings</NavLink>
         <NewListingLink href={routes.adminNew}>+ New listing</NewListingLink>
         <LogoutButton type="button" onClick={logout}>
           Log out
