@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { routes } from "@/constants/routes";
 import { adminApi } from "@/lib/adminApi";
-import { loginWithPasskey } from "@/lib/securityApi";
+import { loginWithPasskey, verify2faWithPasskey } from "@/lib/securityApi";
 import {
   Card,
   Divider,
@@ -19,7 +19,8 @@ import {
   Wrap,
 } from "./styled";
 
-type Stage = "password" | "totp";
+type Stage = "password" | "mfa";
+type Factors = { totp: boolean; passkey: boolean };
 
 function LoginForm() {
   const router = useRouter();
@@ -27,6 +28,7 @@ function LoginForm() {
   const next = params.get("next") ?? routes.admin;
 
   const [stage, setStage] = useState<Stage>("password");
+  const [factors, setFactors] = useState<Factors>({ totp: false, passkey: false });
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -45,7 +47,9 @@ function LoginForm() {
     try {
       const res = await adminApi.login(username, password);
       if (res.mfaRequired) {
-        setStage("totp");
+        // Fall back to the TOTP prompt if the server didn't enumerate factors, for safety.
+        setFactors(res.factors ?? { totp: true, passkey: false });
+        setStage("mfa");
         setBusy(false);
       } else {
         finish();
@@ -69,6 +73,18 @@ function LoginForm() {
     }
   }
 
+  async function onMfaPasskey() {
+    setBusy(true);
+    setError(null);
+    try {
+      await verify2faWithPasskey();
+      finish();
+    } catch {
+      setError("Passkey verification was cancelled or failed.");
+      setBusy(false);
+    }
+  }
+
   async function onPasskey() {
     setBusy(true);
     setError(null);
@@ -81,26 +97,40 @@ function LoginForm() {
     }
   }
 
-  if (stage === "totp") {
+  if (stage === "mfa") {
     return (
       <Card onSubmit={onTotpSubmit}>
         <Wordmark>
           Mo<WordmarkAccent>Gadget</WordmarkAccent>
         </Wordmark>
-        <SubTitle>Two-factor authentication</SubTitle>
-        <FieldLabel>Enter the code from your authenticator (or a recovery code)</FieldLabel>
-        <TextInput
-          value={code}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          autoFocus
-          onChange={(e) => setCode(e.target.value)}
-          required
-        />
+        <SubTitle>Verify it&apos;s you</SubTitle>
+
+        {factors.passkey && (
+          <PasskeyButton type="button" onClick={onMfaPasskey} disabled={busy}>
+            🔑 Verify with a passkey
+          </PasskeyButton>
+        )}
+
+        {factors.passkey && factors.totp && <Divider>or</Divider>}
+
+        {factors.totp && (
+          <>
+            <FieldLabel>Enter the code from your authenticator (or a recovery code)</FieldLabel>
+            <TextInput
+              value={code}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              onChange={(e) => setCode(e.target.value)}
+              required
+            />
+            <SubmitButton type="submit" disabled={busy} $busy={busy}>
+              {busy ? "Verifying…" : "Verify"}
+            </SubmitButton>
+          </>
+        )}
+
         {error && <ErrorNote>{error}</ErrorNote>}
-        <SubmitButton type="submit" disabled={busy} $busy={busy}>
-          {busy ? "Verifying…" : "Verify"}
-        </SubmitButton>
       </Card>
     );
   }

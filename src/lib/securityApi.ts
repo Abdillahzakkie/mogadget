@@ -49,3 +49,11 @@ export async function loginWithPasskey(): Promise<{ username: string }> {
   const { data } = await api.post("/admin/login/passkey", { response: asseResp });
   return data.data;
 }
+
+// ── Passkey as a second factor (after password, gated on the pending-2FA cookie) ──────────────
+export async function verify2faWithPasskey(): Promise<{ username: string }> {
+  const { data: opts } = await api.post("/admin/login/passkey/2fa/options");
+  const asseResp = await startAuthentication({ optionsJSON: opts.data });
+  const { data } = await api.post("/admin/login/passkey/2fa", { response: asseResp });
+  return data.data;
+}

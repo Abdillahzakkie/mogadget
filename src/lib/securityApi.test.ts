@@ -13,7 +13,7 @@ const { startRegistration, startAuthentication } = vi.hoisted(() => ({
 vi.mock("../constants/fetcher", () => ({ api: { post, patch, delete: del, get } }));
 vi.mock("@simplewebauthn/browser", () => ({ startRegistration, startAuthentication }));
 
-import { loginWithPasskey, securityApi } from "./securityApi";
+import { loginWithPasskey, securityApi, verify2faWithPasskey } from "./securityApi";
 
 const envelope = (data: unknown) => ({ data: { data } });
 beforeEach(() => {
@@ -84,6 +84,21 @@ describe("securityApi passkeys", () => {
     expect(startAuthentication).toHaveBeenCalledWith({ optionsJSON: { challenge: "xyz" } });
     expect(post).toHaveBeenNthCalledWith(2, "/admin/login/passkey", {
       response: { id: "assertion" },
+    });
+    expect(res).toEqual({ username: "owner" });
+  });
+
+  it("verifies a passkey as second factor (2fa options → startAuthentication → verify)", async () => {
+    post
+      .mockResolvedValueOnce(envelope({ challenge: "2fa" }))
+      .mockResolvedValueOnce(envelope({ username: "owner" }));
+    startAuthentication.mockResolvedValue({ id: "assertion-2fa" });
+
+    const res = await verify2faWithPasskey();
+    expect(post).toHaveBeenNthCalledWith(1, "/admin/login/passkey/2fa/options");
+    expect(startAuthentication).toHaveBeenCalledWith({ optionsJSON: { challenge: "2fa" } });
+    expect(post).toHaveBeenNthCalledWith(2, "/admin/login/passkey/2fa", {
+      response: { id: "assertion-2fa" },
     });
     expect(res).toEqual({ username: "owner" });
   });

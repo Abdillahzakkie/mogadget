@@ -154,8 +154,9 @@ test("TOTP 2FA: enable, re-login through the second step, then disable", async (
   await page.request.post(`${API}/api/admin/logout`);
   await context.clearCookies();
   await login(page);
-  // The UI advances to the TOTP step instead of the dashboard.
-  await expect(page.getByText("Two-factor authentication")).toBeVisible();
+  // The UI advances to the second-factor step instead of the dashboard. Only TOTP is enrolled
+  // here (no passkey yet), so the code field is shown.
+  await expect(page.getByText(/Verify it.s you/)).toBeVisible();
   await page.locator('input[autocomplete="one-time-code"]').fill(generateSync({ secret }));
   await page.getByRole("button", { name: "Verify" }).click();
   await page.waitForURL(/\/admin$/);
@@ -191,7 +192,19 @@ test("passkeys: register and sign in with a virtual authenticator", async () => 
   expect(list.data.length).toBeGreaterThan(0);
   const passkeyId = list.data[0].id;
 
-  // Log out, then sign in with the passkey (no password).
+  // Password login now requires a second factor because a passkey is registered — and the passkey
+  // itself can satisfy it. Sign in with the password, then complete via the passkey.
+  await page.request.post(`${API}/api/admin/logout`);
+  await context.clearCookies();
+  await login(page);
+  await expect(page.getByText(/Verify it.s you/)).toBeVisible();
+  const passkeyVerify = page.getByRole("button", { name: /Verify with a passkey/ });
+  await expect(passkeyVerify).toBeVisible();
+  await passkeyVerify.click();
+  await page.waitForURL(/\/admin$/);
+  await expect(page).toHaveURL(/\/admin$/);
+
+  // Passwordless path still works too: sign in with the passkey alone (no password).
   await page.request.post(`${API}/api/admin/logout`);
   await context.clearCookies();
   await page.goto("/admin/login");

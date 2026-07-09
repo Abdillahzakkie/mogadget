@@ -47,7 +47,13 @@ describe("passkeys service", () => {
 
   afterAll(async () => {
     await WebauthnCredential.deleteMany({ userId: /^pktest/ });
-    await redis.del(`webauthn:reg:${USER_A}`, `webauthn:reg:${USER_B}`, "webauthn:auth:login");
+    await redis.del(
+      `webauthn:reg:${USER_A}`,
+      `webauthn:reg:${USER_B}`,
+      `webauthn:auth:${USER_A}`,
+      `webauthn:auth:${USER_B}`,
+      "webauthn:auth:login",
+    );
     await redis.quit();
     await disconnectMongoDB();
   });
@@ -55,7 +61,13 @@ describe("passkeys service", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await WebauthnCredential.deleteMany({ userId: /^pktest/ });
-    await redis.del(`webauthn:reg:${USER_A}`, `webauthn:reg:${USER_B}`, "webauthn:auth:login");
+    await redis.del(
+      `webauthn:reg:${USER_A}`,
+      `webauthn:reg:${USER_B}`,
+      `webauthn:auth:${USER_A}`,
+      `webauthn:auth:${USER_B}`,
+      "webauthn:auth:login",
+    );
   });
 
   it("registrationOptions returns options and stashes the challenge under the user's reg scope", async () => {
@@ -167,6 +179,83 @@ describe("passkeys service", () => {
     const passed = vi.mocked(generateAuthenticationOptions).mock.calls[0]?.[0];
     expect(passed?.allowCredentials?.[0]?.id).toBe("cred-auth-opt");
     expect(await consumeChallenge("auth", "login")).toBe("auth-challenge-1");
+  });
+
+  it("authenticationOptions({userId}) offers only that user's credentials, keyed by user", async () => {
+    await createCredentialDB({
+      userId: USER_A,
+      credentialId: "cred-a-scoped",
+      publicKey: "AAEC",
+      counter: 0,
+      transports: ["internal"],
+      nickname: "A",
+    });
+    await createCredentialDB({
+      userId: USER_B,
+      credentialId: "cred-b-scoped",
+      publicKey: "AAEC",
+      counter: 0,
+      transports: ["internal"],
+      nickname: "B",
+    });
+    vi.mocked(generateAuthenticationOptions).mockResolvedValue({
+      challenge: "auth-scoped-1",
+      // biome-ignore lint/suspicious/noExplicitAny: partial options.
+    } as any);
+
+    const options = await authenticationOptions({ userId: USER_A });
+    expect(options.challenge).toBe("auth-scoped-1");
+    // Only USER_A's credential is offered — USER_B's is excluded.
+    const passed = vi.mocked(generateAuthenticationOptions).mock.calls[0]?.[0];
+    expect(passed?.allowCredentials?.map((c) => c.id)).toEqual(["cred-a-scoped"]);
+    // Challenge is stashed under the user's id, not the shared passwordless "login" key.
+    expect(await consumeChallenge("auth", "login")).toBeNull();
+    expect(await consumeChallenge("auth", USER_A)).toBe("auth-scoped-1");
+  });
+
+  it("verifyAuthentication({userId}) redeems the user-scoped challenge and binds to that user", async () => {
+    await createCredentialDB({
+      userId: USER_A,
+      credentialId: "cred-2fa",
+      publicKey: Buffer.from([1, 1]).toString("base64url"),
+      counter: 1,
+      transports: ["internal"],
+      nickname: "2fa",
+    });
+    await stashChallenge("auth", USER_A, "auth-2fa-1");
+    vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
+      verified: true,
+      authenticationInfo: { newCounter: 5 },
+      // biome-ignore lint/suspicious/noExplicitAny: partial verification result.
+    } as any);
+
+    const result = await verifyAuthentication({
+      userId: USER_A,
+      response: anyResponse("cred-2fa"),
+    });
+    expect(result).toEqual({ verified: true, userId: USER_A });
+    // The library was handed the user-scoped challenge, not the "login" one.
+    const passed = vi.mocked(verifyAuthenticationResponse).mock.calls[0]?.[0];
+    expect(passed?.expectedChallenge).toBe("auth-2fa-1");
+  });
+
+  it("verifyAuthentication({userId}) fails when only the passwordless 'login' challenge exists", async () => {
+    await createCredentialDB({
+      userId: USER_A,
+      credentialId: "cred-2fa-wrongkey",
+      publicKey: "AAEC",
+      counter: 0,
+      nickname: "wk",
+    });
+    // A passwordless challenge is stashed under "login", but the second-factor path looks under the
+    // user id — so it must not match, and the library is never invoked.
+    await stashChallenge("auth", "login", "auth-login-only");
+    const result = await verifyAuthentication({
+      userId: USER_A,
+      response: anyResponse("cred-2fa-wrongkey"),
+    });
+    expect(result.verified).toBe(false);
+    expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
   });
 
   it("verifyAuthentication looks up the credential, bumps the counter, and returns the userId", async () => {

@@ -5,15 +5,20 @@ import {
 } from "@simplewebauthn/server";
 import { env } from "../../constants/environments";
 import { stashChallenge } from "../../lib/webauthnChallenge";
-import { listAllCredentialsDB } from "../../models/webauthnCredentials";
+import { listAllCredentialsDB, listCredentialsByUserDB } from "../../models/webauthnCredentials";
 
-// Login is pre-session, so there is no user id to key the challenge by; the app has a single admin
-// owner, so we offer every stored credential in `allowCredentials` and stash the challenge under a
-// fixed "login" key. `userId` is accepted for API symmetry but currently unused.
-export default async function authenticationOptions(_args?: {
+// WebAuthn request options for an authentication ceremony.
+//   • Passwordless login (no userId): the app has a single admin owner, so we offer every stored
+//     credential and stash the challenge under a fixed "login" key.
+//   • Second factor after password (userId given): offer only that user's credentials and key the
+//     challenge by the user id, so the ceremony is bound to the password-authenticated account.
+export default async function authenticationOptions(args?: {
   userId?: string;
 }): Promise<PublicKeyCredentialRequestOptionsJSON> {
-  const credentials = await listAllCredentialsDB();
+  const userId = args?.userId;
+  const credentials = userId
+    ? await listCredentialsByUserDB({ userId })
+    : await listAllCredentialsDB();
   const options = await generateAuthenticationOptions({
     rpID: env.rpId,
     userVerification: "preferred",
@@ -22,6 +27,6 @@ export default async function authenticationOptions(_args?: {
       transports: c.transports as AuthenticatorTransportFuture[],
     })),
   });
-  await stashChallenge("auth", "login", options.challenge);
+  await stashChallenge("auth", userId ?? "login", options.challenge);
   return options;
 }
