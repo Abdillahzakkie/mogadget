@@ -66,3 +66,36 @@ export const SubmitButton = styled.button<{ $busy: boolean }>`
   cursor: pointer;
   opacity: ${({ $busy }) => ($busy ? 0.6 : 1)};
 `;
+
+export const PasskeyButton = styled.button`
+  margin-top: 12px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 21, 24, 0.18);
+  background: transparent;
+  color: var(--ink);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+`;
+
+export const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 2px;
+  color: var(--sold);
+  font-size: 12px;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(20, 21, 24, 0.12);
+  }
+`;

@@ -50,5 +50,56 @@ export async function listGroupsByIdsDB({ ids }: { ids: string[] }): Promise<IGr
     return [];
   }
 }
+export async function listGroupsDB(): Promise<IGroup[]> {
+  try {
+    return await Group.find().sort({ name: 1 }).lean<IGroup[]>();
+  } catch {
+    return [];
+  }
+}
+export async function getGroupByIdDB({ id }: { id: string }): Promise<IGroup | null> {
+  try {
+    return await Group.findById(id).lean<IGroup>();
+  } catch {
+    return null;
+  }
+}
+export async function createGroupDB(g: {
+  name: string;
+  policyIds: string[];
+  statements: IGroup["statements"];
+}): Promise<IGroup | null> {
+  try {
+    const doc = (await Group.create([{ ...g, managed: false }]))[0];
+    return doc ? (doc.toObject() as IGroup) : null;
+  } catch {
+    return null;
+  }
+}
+export async function updateGroupDB({
+  id,
+  patch,
+}: {
+  id: string;
+  patch: { name?: string; policyIds?: string[]; statements?: IGroup["statements"] };
+}): Promise<IGroup | null> {
+  try {
+    return await Group.findByIdAndUpdate(
+      id,
+      { $set: patch },
+      { returnDocument: "after" },
+    ).lean<IGroup>();
+  } catch {
+    return null;
+  }
+}
+export async function deleteGroupDB({ id }: { id: string }): Promise<boolean> {
+  try {
+    const res = await Group.deleteOne({ _id: id });
+    return res.deletedCount > 0;
+  } catch {
+    return false;
+  }
+}
 export default Group;
 export * from "./types";

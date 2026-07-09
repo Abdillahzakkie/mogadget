@@ -64,10 +64,14 @@ test.describe("public catalog", () => {
 
     // At least one product image must decode (naturalWidth > 0) — proves the /uploads blob
     // served by the API renders in the browser, not a broken image.
-    const imgs = page.locator('img[src*="/uploads/products/"]');
+    const imgs = page.locator('img[src*="products/"]');
     await expect(imgs.first()).toBeVisible();
-    const decoded = await imgs.first().evaluate((el: HTMLImageElement) => el.naturalWidth);
-    expect(decoded).toBeGreaterThan(0);
+    // Poll naturalWidth — a presigned S3 (or local) blob may still be decoding when first seen.
+    await expect
+      .poll(async () => imgs.first().evaluate((el: HTMLImageElement) => el.naturalWidth), {
+        timeout: 10_000,
+      })
+      .toBeGreaterThan(0);
 
     expect(c.errors, c.errors.join("\n")).toEqual([]);
   });
@@ -136,7 +140,7 @@ test.describe("public catalog", () => {
 
     // Gallery image decodes.
     if (withSpecs.images.length) {
-      const g = page.locator('img[src*="/uploads/products/"]').first();
+      const g = page.locator('img[src*="products/"]').first();
       await expect(g).toBeVisible();
       expect(await g.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
     }

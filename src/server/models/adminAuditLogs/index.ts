@@ -24,6 +24,40 @@ export async function createAuditLogDB(input: IAuditCreateInput): Promise<void> 
     /* audit is best-effort */
   }
 }
+export async function queryAuditLogsDB(q: {
+  action?: string;
+  userId?: string;
+  from?: Date;
+  to?: Date;
+  page?: number;
+  limit?: number;
+}): Promise<{ items: IAdminAuditLog[]; total: number }> {
+  try {
+    const filter: Record<string, unknown> = {};
+    if (q.action) filter.action = q.action;
+    if (q.userId) filter.userId = q.userId;
+    if (q.from || q.to) {
+      const createdAt: Record<string, Date> = {};
+      if (q.from) createdAt.$gte = q.from;
+      if (q.to) createdAt.$lte = q.to;
+      filter.createdAt = createdAt;
+    }
+    const page = q.page && q.page > 0 ? q.page : 1;
+    const limit = Math.min(q.limit && q.limit > 0 ? q.limit : 50, 200);
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      AdminAuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean<IAdminAuditLog[]>(),
+      AdminAuditLog.countDocuments(filter),
+    ]);
+    return { items, total };
+  } catch {
+    return { items: [], total: 0 };
+  }
+}
 export async function listAuditLogsDB({
   limit = 100,
 }: {

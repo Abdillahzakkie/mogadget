@@ -11,6 +11,7 @@ import {
   sniffImageType,
   storageDriver,
 } from "../src/server";
+import { SITE_CONFIG_DEFAULTS } from "../src/server/services/siteConfig";
 import { iam } from "../src/server/validators";
 
 const OWNER_USERNAME = process.env.SEED_OWNER_USERNAME ?? "owner";
@@ -125,7 +126,12 @@ function syntheticClickEvents(
   productId: string,
   slug: string,
 ): { productId: string; slug: string; channel: "whatsapp" | "instagram"; createdAt: Date }[] {
-  const out: { productId: string; slug: string; channel: "whatsapp" | "instagram"; createdAt: Date }[] = [];
+  const out: {
+    productId: string;
+    slug: string;
+    channel: "whatsapp" | "instagram";
+    createdAt: Date;
+  }[] = [];
   const now = Date.now();
   const DAY = 24 * 60 * 60 * 1000;
   for (let d = 0; d < 90; d++) {
@@ -321,6 +327,11 @@ async function main() {
     passwordHash: await hashPassword(OWNER_PASSWORD),
     groupIds: [groupIdByName.Administrators!],
   });
+
+  // 2b) Site config singleton — seed from the compile-time defaults so the admin's Site Config
+  // screen opens pre-populated. Idempotent (upsert on the fixed singleton key).
+  await models.siteConfig.upsertSiteConfigDB(SITE_CONFIG_DEFAULTS);
+  console.log("Seeded site config singleton.");
 
   // 3) Demo products. Teardown-by-name then recreate → idempotent & re-runnable. Download mode
   // fetches fresh images; reuse mode (SEED_IMAGE_SOURCE=local) re-stores the existing on-disk

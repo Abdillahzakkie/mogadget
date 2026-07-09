@@ -47,7 +47,7 @@ test.beforeAll(async ({ browser }) => {
   await page.goto("/admin/login");
   await page.locator('input[autocomplete="username"]').fill(OWNER);
   await page.locator('input[autocomplete="current-password"]').fill(PASS);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/admin$/);
 });
 
@@ -67,19 +67,21 @@ test("dashboard shows seeded catalog and analytics stats", async () => {
   // Stats strip "Listings" equals the admin list length (includes hidden).
   const listingsCard = page.locator("div", { hasText: /^Listings$/ }).first();
   await expect(listingsCard).toBeVisible();
-  // A couple of known seeded rows are present.
-  await expect(page.getByText("iPhone 15 Pro Max 256GB")).toBeVisible();
-  await expect(page.getByText("iPad Air M2 (draft)")).toBeVisible(); // hidden still listed in admin
+  // A couple of known seeded rows are present in the catalog TABLE. Scope to a table row so the
+  // assertion isn't ambiguous with the analytics panel (which also names low-stock products).
+  await expect(page.locator("tr", { hasText: "iPhone 15 Pro Max 256GB" }).first()).toBeVisible();
+  await expect(page.locator("tr", { hasText: "iPad Air M2 (draft)" }).first()).toBeVisible(); // hidden still listed in admin
   expect(rows.length).toBeGreaterThanOrEqual(9);
 });
 
 test("status toggle persists and restores", async () => {
   await page.goto("/admin");
   const row = page.locator("tr", { hasText: "iPhone 15 Pro Max 256GB" });
-  const statusBtn = row.getByRole("button").nth(0);
+  // Select the status control by its label (the row also has an Expand and a visibility button).
+  const statusBtn = row.getByRole("button", { name: /In stock|Out of stock/ });
   await expect(statusBtn).toContainText("In stock");
   await statusBtn.click();
-  await expect(row.getByRole("button").nth(0)).toContainText("Out of stock");
+  await expect(statusBtn).toContainText("Out of stock");
 
   // Persisted in the store.
   await expect
@@ -87,8 +89,8 @@ test("status toggle persists and restores", async () => {
     .toBe("OUT_OF_STOCK");
 
   // Restore.
-  await row.getByRole("button").nth(0).click();
-  await expect(row.getByRole("button").nth(0)).toContainText("In stock");
+  await statusBtn.click();
+  await expect(statusBtn).toContainText("In stock");
   await expect
     .poll(async () => byName(await adminList(), "iPhone 15 Pro Max 256GB")?.status)
     .toBe("IN_STOCK");
@@ -97,10 +99,10 @@ test("status toggle persists and restores", async () => {
 test("visibility toggle persists, hides from public catalog, and restores", async () => {
   await page.goto("/admin");
   const row = page.locator("tr", { hasText: "Apple Watch Series 8 45mm" });
-  const visBtn = row.getByRole("button").nth(1);
+  const visBtn = row.getByRole("button", { name: /Visible|Hidden/ });
   await expect(visBtn).toContainText("Visible");
   await visBtn.click();
-  await expect(row.getByRole("button").nth(1)).toContainText("Hidden");
+  await expect(visBtn).toContainText("Hidden");
 
   await expect
     .poll(async () => byName(await adminList(), "Apple Watch Series 8 45mm")?.isVisible)
@@ -117,8 +119,8 @@ test("visibility toggle persists, hides from public catalog, and restores", asyn
     .toBe(false);
 
   // Restore.
-  await row.getByRole("button").nth(1).click();
-  await expect(row.getByRole("button").nth(1)).toContainText("Visible");
+  await visBtn.click();
+  await expect(visBtn).toContainText("Visible");
   await expect
     .poll(async () => byName(await adminList(), "Apple Watch Series 8 45mm")?.isVisible)
     .toBe(true);

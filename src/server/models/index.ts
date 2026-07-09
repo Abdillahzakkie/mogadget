@@ -3,4 +3,7 @@ export * as clickEvents from "./clickEvents";
 export * as groups from "./groups";
 export * as policies from "./policies";
 export * as products from "./products";
+export * as siteConfig from "./siteConfig";
+export * as userSecurity from "./userSecurity";
 export * as users from "./users";
+export * as webauthnCredentials from "./webauthnCredentials";

@@ -23,3 +23,33 @@ export const revalidateTags = {
   products: "products",
   product: (slug: string) => `product:${slug}`,
 };
+
+// Path-based on-demand ISR revalidation. Site-config changes affect chrome that appears on every
+// route (footer contact, WhatsApp links, maintenance gate), so we expire whole paths rather than
+// a single fetch tag. `revalidatePath("/", "layout")` clears the root layout and everything nested
+// under it. Same swallow-and-log contract as triggerRevalidate — never throws into the request.
+export function triggerRevalidatePath(path: string, type: "page" | "layout" = "layout"): void {
+  void import("next/cache")
+    .then(({ revalidatePath }) => {
+      revalidatePath(path, type);
+    })
+    .catch((err) => {
+      getLogger().warn(`revalidatePath failed: ${String(err)}`);
+    });
+}
+
+// Awaited variant: resolves only after the path is marked stale. Used where the caller must not
+// report success until the public cache is guaranteed purged (e.g. a site-config save that flips
+// maintenance mode — the admin expects it to take effect on the very next page load). Never throws
+// into the request path; outside a Next request scope (unit tests/seed) it resolves quietly.
+export async function revalidatePathNow(
+  path: string,
+  type: "page" | "layout" = "layout",
+): Promise<void> {
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath(path, type);
+  } catch (err) {
+    getLogger().warn(`revalidatePath failed: ${String(err)}`);
+  }
+}

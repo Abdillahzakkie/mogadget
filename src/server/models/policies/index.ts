@@ -48,5 +48,55 @@ export async function listPoliciesByIdsDB({ ids }: { ids: string[] }): Promise<I
     return [];
   }
 }
+export async function listPoliciesDB(): Promise<IPolicy[]> {
+  try {
+    return await Policy.find().sort({ name: 1 }).lean<IPolicy[]>();
+  } catch {
+    return [];
+  }
+}
+export async function getPolicyByIdDB({ id }: { id: string }): Promise<IPolicy | null> {
+  try {
+    return await Policy.findById(id).lean<IPolicy>();
+  } catch {
+    return null;
+  }
+}
+export async function createPolicyDB(p: {
+  name: string;
+  statements: IPolicy["statements"];
+}): Promise<IPolicy | null> {
+  try {
+    const doc = (await Policy.create([{ ...p, managed: false }]))[0];
+    return doc ? (doc.toObject() as IPolicy) : null;
+  } catch {
+    return null;
+  }
+}
+export async function updatePolicyDB({
+  id,
+  patch,
+}: {
+  id: string;
+  patch: { name?: string; statements?: IPolicy["statements"] };
+}): Promise<IPolicy | null> {
+  try {
+    return await Policy.findByIdAndUpdate(
+      id,
+      { $set: patch },
+      { returnDocument: "after" },
+    ).lean<IPolicy>();
+  } catch {
+    return null;
+  }
+}
+export async function deletePolicyDB({ id }: { id: string }): Promise<boolean> {
+  try {
+    const res = await Policy.deleteOne({ _id: id });
+    return res.deletedCount > 0;
+  } catch {
+    return false;
+  }
+}
 export default Policy;
 export * from "./types";

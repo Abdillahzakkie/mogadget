@@ -52,8 +52,12 @@ pnpm test                     # unit tests; enforces ≥95% coverage. HTTP route
 npx vitest run --coverage     # coverage report + threshold gate
 
 # End-to-end (real browser → app → DB). Start Mongo/Redis + seed first, then:
+# Run the e2e server with the LOCAL storage driver: uploads are same-origin (POST sign →
+# PUT /api/admin/uploads/blob), so the browser upload path needs no S3 bucket CORS. With
+# STORAGE_DRIVER=s3 the browser PUTs directly to a presigned S3 URL, which requires the
+# bucket to allow the origin via CORS — a deployment concern, not exercised by the suite.
 pnpm build
-SITE_URL=http://localhost:3100 pnpm start -p 3100 &
+STORAGE_DRIVER=local SITE_URL=http://localhost:3100 pnpm start -p 3100 &
 # ISR pages prerender empty at build time (no server to self-fetch); the first hit
 # triggers background revalidation. Poll until the home page serves real data:
 until curl -s http://localhost:3100/ | grep -q "/uploads/products/"; do sleep 2; done

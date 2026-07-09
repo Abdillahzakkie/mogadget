@@ -7,4 +7,11 @@ export const routes = {
   admin: "/admin",
   adminNew: "/admin/products/new",
   adminEdit: (id: string) => `/admin/products/${id}`,
+  adminSettings: "/admin/settings",
+  adminSettingsProfile: "/admin/settings/profile",
+  adminSettingsSecurity: "/admin/settings/security",
+  adminSettingsSite: "/admin/settings/site",
+  adminSettingsAudit: "/admin/settings/audit",
+  adminSettingsAnalytics: "/admin/settings/analytics",
+  adminSettingsIam: "/admin/settings/iam",
 };

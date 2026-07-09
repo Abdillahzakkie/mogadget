@@ -15,8 +15,13 @@ one seller (the owner), and only the owner can create, edit, or remove listings.
 
 - **Customers**: anywhere in Nigeria. Delivery is nationwide, not Lagos-only.
 - **Admin (owner)**: the single person who manages the entire catalog. No staff accounts,
-  no multi-vendor support, no plans for either — keep the auth model deliberately simple
-  (one admin login, not a role/permission system).
+  no multi-vendor support, no plans for either. The site ships with a full IAM model
+  (users/groups/policies + `withPermission`), seeded to a single superadmin owner, plus
+  hardened sign-in — passkeys (WebAuthn) and optional TOTP 2FA. Everything is managed from
+  **/admin/settings** (Profile, Security, Site config, Analytics, Audit log, Access/IAM).
+  (Historical note: an earlier draft of this doc called for "one admin login, not a
+  role/permission system." That guidance was intentionally superseded — the IAM + MFA
+  surface is the current design.)
 
 ## 3. Core principle: this is a catalog, not a checkout
 

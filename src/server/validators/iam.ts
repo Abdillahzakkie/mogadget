@@ -4,6 +4,7 @@ export const Permission = {
   AnalyticsRead: "analytics:read",
   AuditRead: "audit:read",
   IamManage: "iam:manage",
+  SettingsWrite: "settings:write",
 } as const;
 export type TPermission = (typeof Permission)[keyof typeof Permission];
 export const ALL_PERMISSIONS: TPermission[] = Object.values(Permission);

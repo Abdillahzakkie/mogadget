@@ -15,7 +15,7 @@ test.beforeAll(async ({ browser }) => {
   await page.goto("/admin/login");
   await page.locator('input[autocomplete="username"]').fill(OWNER);
   await page.locator('input[autocomplete="current-password"]').fill(PASS);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/admin$/);
 });
 
