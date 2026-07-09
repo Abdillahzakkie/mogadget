@@ -105,6 +105,36 @@ describe("product services (mutations + caching)", () => {
     expect(await updateProduct({ id: MISSING_ID, patch: { priceNaira: 1 } })).toBeNull();
   });
 
+  it("updateProduct auto-hides a restockable listing when stock drops to zero", async () => {
+    const created = await createProduct({ ...newPhone, name: "SvcOps Zero", quantity: 5 } as never);
+    const id = String(created!._id);
+    expect(created!.isVisible).toBe(true);
+
+    // Editing quantity to 0 must hide the listing even though isVisible is not in the patch.
+    const zeroed = await updateProduct({ id, patch: { quantity: 0, status: "OUT_OF_STOCK" } });
+    expect(zeroed!.quantity).toBe(0);
+    expect(zeroed!.isVisible).toBe(false);
+
+    // Trying to keep it visible at zero stock is overridden by the system rule.
+    const forced = await updateProduct({ id, patch: { isVisible: true } });
+    expect(forced!.isVisible).toBe(false);
+
+    // Restocking does NOT auto-unhide — re-listing stays a deliberate admin action.
+    const restocked = await updateProduct({ id, patch: { quantity: 4, status: "IN_STOCK" } });
+    expect(restocked!.isVisible).toBe(false);
+  });
+
+  it("createProduct creates a zero-stock restockable listing already hidden", async () => {
+    const doc = await createProduct({
+      ...newPhone,
+      name: "SvcOps CreateZero",
+      quantity: 0,
+      status: "OUT_OF_STOCK",
+      isVisible: true,
+    } as never);
+    expect(doc!.isVisible).toBe(false);
+  });
+
   it("setStatus validates the transition and persists; missing → null", async () => {
     const created = await createProduct({ ...newPhone, name: "SvcOps Status" } as never);
     const id = String(created!._id);

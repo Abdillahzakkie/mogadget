@@ -1,4 +1,4 @@
-import { assertProductInvariants } from "../../domain";
+import { assertProductInvariants, stockAwareVisibility } from "../../domain";
 import { getProductByIdDB, updateProductByIdDB } from "../../models/products";
 import type { IProduct, IProductUpdateInput } from "../../models/products/types";
 import invalidateCacheKeys from "./utils/invalidateCacheKeys";
@@ -41,6 +41,14 @@ export default async function updateProduct({
     quantity: merged.quantity,
     priceNaira: merged.priceNaira,
   });
+  // Auto-hide when this write drops a restockable listing to zero stock — persisted even if the
+  // admin left visibility untouched (or tried to keep it visible). See stockAwareVisibility.
+  const enforcedVisible = stockAwareVisibility({
+    stockType: merged.stockType,
+    quantity: merged.quantity,
+    isVisible: merged.isVisible,
+  });
+  if (enforcedVisible !== merged.isVisible) clean.isVisible = enforcedVisible;
   const doc = await updateProductByIdDB({ id, patch: clean });
   if (doc) await invalidateCacheKeys({ slug: doc.slug });
   return doc;

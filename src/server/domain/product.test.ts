@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ErrInvalidFields } from "../constants/errors";
-import { assertProductInvariants, deriveStatusFromQuantity } from "./product";
+import { assertProductInvariants, deriveStatusFromQuantity, stockAwareVisibility } from "./product";
 
 const newValid = {
   condition: "NEW",
@@ -71,5 +71,29 @@ describe("deriveStatusFromQuantity", () => {
   it("maps 0 → OUT_OF_STOCK and >0 → IN_STOCK", () => {
     expect(deriveStatusFromQuantity(0)).toBe("OUT_OF_STOCK");
     expect(deriveStatusFromQuantity(3)).toBe("IN_STOCK");
+  });
+});
+
+describe("stockAwareVisibility", () => {
+  it("forces a restockable listing hidden at zero or negative stock", () => {
+    expect(stockAwareVisibility({ stockType: "RESTOCKABLE", quantity: 0, isVisible: true })).toBe(
+      false,
+    );
+    expect(stockAwareVisibility({ stockType: "RESTOCKABLE", quantity: -2, isVisible: true })).toBe(
+      false,
+    );
+  });
+  it("leaves a restockable listing's visibility untouched when in stock", () => {
+    expect(stockAwareVisibility({ stockType: "RESTOCKABLE", quantity: 3, isVisible: true })).toBe(
+      true,
+    );
+    expect(stockAwareVisibility({ stockType: "RESTOCKABLE", quantity: 3, isVisible: false })).toBe(
+      false,
+    );
+  });
+  it("never auto-hides a unique unit (sold-out is expressed as SOLD, not quantity)", () => {
+    expect(stockAwareVisibility({ stockType: "UNIQUE_UNIT", quantity: null, isVisible: true })).toBe(
+      true,
+    );
   });
 });
