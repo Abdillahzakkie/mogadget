@@ -10,6 +10,21 @@ export type TCosmeticGrade = "A" | "B" | "C";
 export type TStatus = "IN_STOCK" | "OUT_OF_STOCK" | "AVAILABLE" | "SOLD";
 export type TStockType = "RESTOCKABLE" | "UNIQUE_UNIT";
 export type TClickChannel = "whatsapp" | "instagram";
+export interface IClickDayRow {
+  day: string; // "YYYY-MM-DD" (UTC)
+  channel: TClickChannel;
+  count: number;
+}
+export interface ITrendPoint {
+  date: string; // "YYYY-MM-DD" (UTC)
+  whatsapp: number;
+  instagram: number;
+}
+export interface IClickTrends {
+  days: number;
+  series: ITrendPoint[];
+  totals: { whatsapp: number; instagram: number };
+}
 
 export interface IProductImageDto {
   url: string;
