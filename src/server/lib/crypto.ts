@@ -1,10 +1,4 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  hkdfSync,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import { env } from "../constants/environments";
 
 // AES-256-GCM encryption for secrets held at rest (currently TOTP shared secrets). The stored
@@ -42,13 +36,4 @@ export function decryptSecret(payload: string): string {
   return Buffer.concat([decipher.update(Buffer.from(ctB64, "base64")), decipher.final()]).toString(
     "utf8",
   );
-}
-
-// Constant-time comparison for opaque tokens (recovery codes, challenge ids) to avoid leaking
-// match position through timing. Length mismatch short-circuits (already not equal).
-export function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
 }

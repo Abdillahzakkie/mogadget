@@ -64,11 +64,12 @@ export async function updateUserAccess(input: {
 
   const admins = await listAdminUserIds();
   if (admins.length === 0) {
-    // Revert — this edit removed the final admin.
+    // Revert — this edit removed the final admin. `before` is a full IUser, so its id arrays
+    // are always present (schema default []).
     await updateUserAccessDB({
       id: input.id,
-      groupIds: (before.groupIds ?? []).map(String),
-      attachedPolicyIds: (before.attachedPolicyIds ?? []).map(String),
+      groupIds: before.groupIds.map(String),
+      attachedPolicyIds: before.attachedPolicyIds.map(String),
     });
     await invalidateEffectivePermissions({ userId: input.id });
     return { ok: false, reason: "last_admin" };

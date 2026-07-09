@@ -59,6 +59,15 @@ describe("siteConfig service", () => {
     expect(dbSpy).not.toHaveBeenCalled();
   });
 
+  it("returns null when the persistence layer fails", async () => {
+    const { SiteConfig: Model } = await import("../../models/siteConfig");
+    vi.spyOn(Model, "findOneAndUpdate").mockReturnValueOnce({
+      lean: () => Promise.resolve(null),
+      // biome-ignore lint/suspicious/noExplicitAny: minimal query stub for the failure path.
+    } as any);
+    expect(await updateSiteConfig({ tagline: "x" })).toBeNull();
+  });
+
   it("refreshes the cache after an update", async () => {
     await getSiteConfig({ refreshCache: true }); // warm cache with defaults
     await updateSiteConfig({ tagline: "Fresh" });

@@ -38,13 +38,19 @@ describe("matchesFilters", () => {
     expect(matchesFilters(prod({}), DEFAULT_FILTERS)).toBe(true);
   });
   it("text search matches name or brand, case-insensitively", () => {
-    expect(matchesFilters(prod({ name: "Galaxy S21", brand: "Samsung" }), f({ q: "samsung" }))).toBe(true);
-    expect(matchesFilters(prod({ name: "Galaxy S21", brand: "Samsung" }), f({ q: "pixel" }))).toBe(false);
+    expect(
+      matchesFilters(prod({ name: "Galaxy S21", brand: "Samsung" }), f({ q: "samsung" })),
+    ).toBe(true);
+    expect(matchesFilters(prod({ name: "Galaxy S21", brand: "Samsung" }), f({ q: "pixel" }))).toBe(
+      false,
+    );
   });
   it("facets filter by exact value", () => {
     expect(matchesFilters(prod({ category: "PHONES" }), f({ category: "LAPTOPS" }))).toBe(false);
     expect(matchesFilters(prod({ status: "SOLD" }), f({ status: "SOLD" }))).toBe(true);
-    expect(matchesFilters(prod({ stockType: "UNIQUE_UNIT" }), f({ stockType: "RESTOCKABLE" }))).toBe(false);
+    expect(
+      matchesFilters(prod({ stockType: "UNIQUE_UNIT" }), f({ stockType: "RESTOCKABLE" })),
+    ).toBe(false);
   });
   it("visibility filter distinguishes visible/hidden", () => {
     expect(matchesFilters(prod({ isVisible: false }), f({ visibility: "hidden" }))).toBe(true);
@@ -58,21 +64,55 @@ describe("matchesFilters", () => {
 });
 
 describe("applyProductFilters", () => {
-  const a = prod({ id: "a", priceNaira: 100, createdAt: "2026-01-01T00:00:00.000Z", whatsappClickCount: 1, instagramClickCount: 0 });
-  const b = prod({ id: "b", priceNaira: 300, createdAt: "2026-03-01T00:00:00.000Z", whatsappClickCount: 5, instagramClickCount: 5 });
-  const c = prod({ id: "c", priceNaira: 200, createdAt: "2026-02-01T00:00:00.000Z", whatsappClickCount: 0, instagramClickCount: 0 });
+  const a = prod({
+    id: "a",
+    priceNaira: 100,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    whatsappClickCount: 1,
+    instagramClickCount: 0,
+  });
+  const b = prod({
+    id: "b",
+    priceNaira: 300,
+    createdAt: "2026-03-01T00:00:00.000Z",
+    whatsappClickCount: 5,
+    instagramClickCount: 5,
+  });
+  const c = prod({
+    id: "c",
+    priceNaira: 200,
+    createdAt: "2026-02-01T00:00:00.000Z",
+    whatsappClickCount: 0,
+    instagramClickCount: 0,
+  });
   const all = [a, b, c];
 
   it("sorts newest first by default", () => {
     expect(applyProductFilters(all, DEFAULT_FILTERS).map((p) => p.id)).toEqual(["b", "c", "a"]);
   });
   it("sorts by price ascending and descending", () => {
-    expect(applyProductFilters(all, f({ sort: "price_asc" })).map((p) => p.id)).toEqual(["a", "c", "b"]);
-    expect(applyProductFilters(all, f({ sort: "price_desc" })).map((p) => p.id)).toEqual(["b", "c", "a"]);
+    expect(applyProductFilters(all, f({ sort: "price_asc" })).map((p) => p.id)).toEqual([
+      "a",
+      "c",
+      "b",
+    ]);
+    expect(applyProductFilters(all, f({ sort: "price_desc" })).map((p) => p.id)).toEqual([
+      "b",
+      "c",
+      "a",
+    ]);
   });
   it("sorts by total clicks", () => {
-    expect(applyProductFilters(all, f({ sort: "clicks_desc" })).map((p) => p.id)).toEqual(["b", "a", "c"]);
-    expect(applyProductFilters(all, f({ sort: "clicks_asc" })).map((p) => p.id)).toEqual(["c", "a", "b"]);
+    expect(applyProductFilters(all, f({ sort: "clicks_desc" })).map((p) => p.id)).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+    expect(applyProductFilters(all, f({ sort: "clicks_asc" })).map((p) => p.id)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
   });
   it("filters then sorts, and does not mutate the input array", () => {
     const out = applyProductFilters(all, f({ min: 150, sort: "price_asc" }));

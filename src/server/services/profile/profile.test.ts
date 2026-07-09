@@ -81,6 +81,19 @@ describe("profile service", () => {
     expect(again).toEqual({ ok: true });
   });
 
+  it("returns null / not_found for an unknown user", async () => {
+    const unknown = "0123456789abcdef01234567";
+    expect(await getMyProfile({ userId: unknown })).toBeNull();
+    expect(await updateProfile({ userId: unknown, patch: { displayName: "x" } })).toBeNull();
+    expect(
+      await changePassword({ userId: unknown, currentPassword: "a", newPassword: "bbbbbbbb" }),
+    ).toEqual({ ok: false, reason: "not_found" });
+    expect(await changeUsername({ userId: unknown, username: "whatever" })).toEqual({
+      ok: false,
+      reason: "not_found",
+    });
+  });
+
   it("changes the username when free and rejects a taken one", async () => {
     await createUserDB({ username: "ptest-taken", passwordHash: await hashPassword("x") });
     const taken = await changeUsername({ userId, username: "ptest-taken" });

@@ -1,9 +1,10 @@
 import { generateSync } from "otplib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { env } from "../../constants/environments";
 import { connectMongoDB, disconnectMongoDB } from "../../databases/mongoDB";
 import { connectRedis, redis } from "../../databases/redis";
-import { decryptSecret } from "../../lib/crypto";
-import { getUserSecurityDB, UserSecurity } from "../../models/userSecurity";
+import { decryptSecret, encryptSecret } from "../../lib/crypto";
+import { getUserSecurityDB, UserSecurity, updateUserSecurityDB } from "../../models/userSecurity";
 import {
   consumeRecoveryCode,
   getSecurityStatus,
@@ -78,6 +79,54 @@ describe("security / TOTP 2FA", () => {
     expect(await consumeRecoveryCode({ userId: USER, code })).toBe(false);
     const status = await getSecurityStatus({ userId: USER });
     expect(status.recoveryCodesRemaining).toBe(9);
+  });
+
+  it("handles a user with no security record on every path", async () => {
+    const nobody = "sectest-nobody";
+    expect(await getSecurityStatus({ userId: nobody })).toEqual({
+      totpEnabled: false,
+      recoveryCodesRemaining: 0,
+    });
+    expect(await totpEnable({ userId: nobody, code: "123456" })).toEqual({
+      ok: false,
+      reason: "no_setup",
+    });
+    expect(await verifyTotpForUser({ userId: nobody, code: "123456" })).toBe(false);
+    expect(await consumeRecoveryCode({ userId: nobody, code: "aaaaa-bbbbb" })).toBe(false);
+    expect(await totpDisable({ userId: nobody, code: "123456" })).toEqual({ ok: false });
+    expect(await regenerateRecoveryCodes({ userId: nobody, code: "123456" })).toEqual({
+      ok: false,
+      reason: "not_enabled",
+    });
+  });
+
+  it("rejects regenerate with a wrong code when enabled", async () => {
+    // USER is enabled by an earlier test in this file; a wrong code is rejected.
+    const res = await regenerateRecoveryCodes({ userId: USER, code: "000000" });
+    expect(res).toEqual({ ok: false, reason: "bad_code" });
+  });
+
+  it("refuses setup in production with a derived credential key", async () => {
+    const prevProd = env.isProduction;
+    const prevDerived = env.credentialKeyIsDerived;
+    try {
+      (env as { isProduction: boolean }).isProduction = true;
+      (env as { credentialKeyIsDerived: boolean }).credentialKeyIsDerived = true;
+      const res = await totpSetup({ userId: "sectest-prod", username: "owner" });
+      expect(res).toEqual({ ok: false, reason: "insecure_key" });
+    } finally {
+      (env as { isProduction: boolean }).isProduction = prevProd;
+      (env as { credentialKeyIsDerived: boolean }).credentialKeyIsDerived = prevDerived;
+    }
+  });
+
+  it("treats a malformed stored secret as a failed verification", async () => {
+    const uid = "sectest-bad-secret";
+    await updateUserSecurityDB({
+      userId: uid,
+      patch: { totpEnabled: true, totpSecret: encryptSecret("!!!not-valid-base32!!!") },
+    });
+    expect(await verifyTotpForUser({ userId: uid, code: "123456" })).toBe(false);
   });
 
   it("disables 2FA only with a valid code and clears the secret", async () => {

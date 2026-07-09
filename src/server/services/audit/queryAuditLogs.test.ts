@@ -95,6 +95,17 @@ describe("queryAuditLogs", () => {
     expect(res.total).toBe(4);
   });
 
+  it("maps a present-but-unknown userId to 'system'", async () => {
+    await createAuditLogDB({
+      userId: "0123456789abcdef01234567",
+      action: "AUDITTEST_ORPHAN",
+      responseCode: 200,
+      durationMs: 3,
+    });
+    const res = await queryAuditLogs({ action: "AUDITTEST_ORPHAN" });
+    expect(res.items[0]?.username).toBe("system");
+  });
+
   it("returns an empty result for an unmatched action", async () => {
     const res = await queryAuditLogs({ action: "AUDITTEST_NOPE" });
     expect(res.total).toBe(0);

@@ -224,6 +224,57 @@ describe("passkeys service", () => {
     expect(result.verified).toBe(false);
   });
 
+  it("registrationOptions excludes already-registered credentials", async () => {
+    await createCredentialDB({
+      userId: USER_A,
+      credentialId: "cred-existing",
+      publicKey: "AAEC",
+      counter: 0,
+      transports: ["internal"],
+      nickname: "Existing",
+    });
+    vi.mocked(generateRegistrationOptions).mockResolvedValue({
+      // biome-ignore lint/suspicious/noExplicitAny: partial options are enough here.
+      challenge: "reg-challenge-excl",
+    } as any);
+
+    await registrationOptions({ userId: USER_A, username: "admin" });
+    const passed = vi.mocked(generateRegistrationOptions).mock.calls[0]?.[0];
+    expect(passed?.excludeCredentials?.[0]?.id).toBe("cred-existing");
+  });
+
+  it("verifyRegistration defaults nickname and transports when omitted", async () => {
+    await stashChallenge("reg", USER_B, "reg-challenge-def");
+    vi.mocked(verifyRegistrationResponse).mockResolvedValue({
+      verified: true,
+      registrationInfo: {
+        credential: { id: "cred-default", publicKey: new Uint8Array([5]), counter: 0 },
+        credentialDeviceType: "multiDevice",
+        credentialBackedUp: false,
+      },
+      // biome-ignore lint/suspicious/noExplicitAny: partial verification result.
+    } as any);
+
+    await verifyRegistration({ userId: USER_B, response: anyResponse("cred-default") });
+    const stored = await getCredentialByCredentialIdDB({ credentialId: "cred-default" });
+    expect(stored?.nickname).toBe("Passkey");
+    expect(stored?.transports).toEqual([]);
+  });
+
+  it("verifyAuthentication returns not-verified when the login challenge is missing", async () => {
+    await createCredentialDB({
+      userId: USER_A,
+      credentialId: "cred-no-challenge",
+      publicKey: "AAEC",
+      counter: 0,
+      nickname: "NoChallenge",
+    });
+    // No stashChallenge → the credential is found but there's no challenge to match.
+    const result = await verifyAuthentication({ response: anyResponse("cred-no-challenge") });
+    expect(result.verified).toBe(false);
+    expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+  });
+
   it("list/rename/delete are scoped by userId — a user can't touch another's credential", async () => {
     const cred = await createCredentialDB({
       userId: USER_A,
