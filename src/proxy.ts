@@ -8,7 +8,10 @@ const secret = new TextEncoder().encode(
 async function isValid(token: string | undefined): Promise<boolean> {
   if (!token) return false;
   try {
-    await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    // A pending-2FA token has only cleared the password step — it must not authorize /admin,
+    // even if copied into the mg_session cookie. Mirrors verifySession on the Node runtime.
+    if (payload.stage === "2fa") return false;
     return true;
   } catch {
     return false;
