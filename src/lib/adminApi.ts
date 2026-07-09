@@ -27,8 +27,13 @@ async function uploadFile(file: File): Promise<{ key: string; publicUrl: string 
 }
 
 export const adminApi = {
-  login: (username: string, password: string) =>
+  login: (
+    username: string,
+    password: string,
+  ): Promise<{ mfaRequired: boolean; username: string }> =>
     api.post("/admin/login", { username, password }).then((r) => r.data.data),
+  loginTotp: (code: string): Promise<{ username: string }> =>
+    api.post("/admin/login/totp", { code }).then((r) => r.data.data),
   logout: () => api.post("/admin/logout").then((r) => r.data.data),
   create: (payload: unknown): Promise<IProductDto> =>
     api.post("/admin/products", payload).then((r) => r.data.data),
