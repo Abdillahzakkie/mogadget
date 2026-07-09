@@ -59,6 +59,12 @@ export const Muted = styled.p`
   margin: 0;
 `;
 
+export const SubHead = styled.h3`
+  margin: 16px 0 12px;
+  font: 700 14px var(--font-body);
+  color: var(--ink);
+`;
+
 export const BarRow = styled.div`
   display: grid;
   grid-template-columns: 96px 1fr 36px;

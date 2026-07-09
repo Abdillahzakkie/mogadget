@@ -6,6 +6,7 @@ import type {
   IClickTrends,
   ITrendPoint,
   TCategory,
+  TStatus,
 } from "@/server/validators/types";
 import { useClickTrends } from "../../hooks/Analytics/useClickTrends";
 import { useAdminProducts } from "../../hooks/Products/useAdminProducts";
@@ -19,11 +20,18 @@ import {
   Muted,
   RangeTabs,
   Section,
+  SubHead,
 } from "./styled";
 
 const WA = "var(--whatsapp)";
 const IG = "#c13584"; // Instagram magenta
 const RANGES = [7, 30, 90];
+const STATUS_LABEL: Record<TStatus, string> = {
+  IN_STOCK: "In stock",
+  OUT_OF_STOCK: "Out of stock",
+  AVAILABLE: "Available",
+  SOLD: "Sold",
+};
 
 // ---- Inline SVG trend chart (no chart lib). Responsive via viewBox. ----
 function TrendChart({ trends }: { trends: IClickTrends }) {
@@ -93,25 +101,44 @@ function ClicksTrend() {
   );
 }
 
-function Breakdown({ products }: { products: IAdminProductDto[] }) {
-  const byCat = new Map<TCategory, number>();
-  for (const p of products) byCat.set(p.category, (byCat.get(p.category) ?? 0) + 1);
-  const rows = [...byCat.entries()].sort((a, b) => b[1] - a[1]);
+function Bars({ rows }: { rows: [string, number][] }) {
   const max = Math.max(1, ...rows.map(([, n]) => n));
   return (
-    <Card>
-      <CardHead>
-        <h3>By category</h3>
-      </CardHead>
-      {rows.map(([cat, n]) => (
-        <BarRow key={cat}>
-          <span>{CATEGORY_LABEL[cat]}</span>
+    <>
+      {rows.map(([label, n]) => (
+        <BarRow key={label}>
+          <span>{label}</span>
           <span className="track">
             <span className="fill" style={{ width: `${(n / max) * 100}%` }} />
           </span>
           <span className="n">{n}</span>
         </BarRow>
       ))}
+    </>
+  );
+}
+
+function Breakdown({ products }: { products: IAdminProductDto[] }) {
+  const byCat = new Map<TCategory, number>();
+  const byStatus = new Map<TStatus, number>();
+  for (const p of products) {
+    byCat.set(p.category, (byCat.get(p.category) ?? 0) + 1);
+    byStatus.set(p.status, (byStatus.get(p.status) ?? 0) + 1);
+  }
+  const catRows = [...byCat.entries()]
+    .map(([k, n]) => [CATEGORY_LABEL[k], n] as [string, number])
+    .sort((a, b) => b[1] - a[1]);
+  const statusRows = [...byStatus.entries()]
+    .map(([k, n]) => [STATUS_LABEL[k], n] as [string, number])
+    .sort((a, b) => b[1] - a[1]);
+  return (
+    <Card>
+      <CardHead>
+        <h3>By category</h3>
+      </CardHead>
+      <Bars rows={catRows} />
+      <SubHead>By status</SubHead>
+      <Bars rows={statusRows} />
     </Card>
   );
 }

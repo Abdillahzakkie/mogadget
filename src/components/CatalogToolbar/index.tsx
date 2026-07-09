@@ -44,11 +44,13 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
       <Search
         type="search"
         placeholder="Search name or brand…"
+        aria-label="Search listings"
         value={filters.q}
         onChange={(e) => setFilter("q", e.target.value)}
       />
       <Select
         value={filters.category}
+        aria-label="Category"
         onChange={(e) => setFilter("category", e.target.value as IProductFilters["category"])}
       >
         <option value="">All categories</option>
@@ -60,6 +62,7 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
       </Select>
       <Select
         value={filters.condition}
+        aria-label="Condition"
         onChange={(e) => setFilter("condition", e.target.value as IProductFilters["condition"])}
       >
         <option value="">All conditions</option>
@@ -71,6 +74,7 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
       </Select>
       <Select
         value={filters.status}
+        aria-label="Status"
         onChange={(e) => setFilter("status", e.target.value as IProductFilters["status"])}
       >
         <option value="">Any status</option>
@@ -82,6 +86,7 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
       </Select>
       <Select
         value={filters.stockType}
+        aria-label="Stock type"
         onChange={(e) => setFilter("stockType", e.target.value as IProductFilters["stockType"])}
       >
         <option value="">Any stock type</option>
@@ -93,6 +98,7 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
       </Select>
       <Select
         value={filters.visibility}
+        aria-label="Visibility"
         onChange={(e) => setFilter("visibility", e.target.value as IProductFilters["visibility"])}
       >
         <option value="">Any visibility</option>
@@ -103,6 +109,7 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
         type="number"
         min={0}
         placeholder="Min ₦"
+        aria-label="Minimum price"
         value={filters.min ?? ""}
         onChange={(e) => setFilter("min", num(e.target.value))}
       />
@@ -110,11 +117,13 @@ export function CatalogToolbar({ filters, setFilter, reset, count, total }: Prop
         type="number"
         min={0}
         placeholder="Max ₦"
+        aria-label="Maximum price"
         value={filters.max ?? ""}
         onChange={(e) => setFilter("max", num(e.target.value))}
       />
       <Select
         value={filters.sort}
+        aria-label="Sort"
         onChange={(e) => setFilter("sort", e.target.value as TProductSort)}
       >
         {SORT_OPTIONS.map((o) => (

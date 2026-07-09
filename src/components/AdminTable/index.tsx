@@ -181,8 +181,9 @@ export function AdminTable({ products, total, count, isLoading, error, mutate }:
                           <h4>Specs</h4>
                           {p.specs.length ? (
                             <ul>
-                              {p.specs.map((s) => (
-                                <li key={s.label}>
+                              {p.specs.map((s, i) => (
+                                // biome-ignore lint/suspicious/noArrayIndexKey: composite key guards against duplicate spec labels
+                                <li key={`${i}-${s.label}`}>
                                   {s.label}: {s.value}
                                 </li>
                               ))}
