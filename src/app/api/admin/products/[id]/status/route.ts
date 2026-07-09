@@ -30,7 +30,7 @@ export const POST = withApiHandler<ICtx>(
         const doc = await services.products.setStatus({ id, status });
         if (!doc) throw ErrNotFound;
         triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
-        return ok(toAdminProduct(doc));
+        return ok(await toAdminProduct(doc));
       },
       { action: "product.setStatus", targetType: "product", captureBody: true },
     )(req);

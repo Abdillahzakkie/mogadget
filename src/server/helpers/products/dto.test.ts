@@ -27,9 +27,9 @@ const base = {
 } as const;
 
 describe("toPublicProduct", () => {
-  it("sorts images by sortOrder and stringifies dates", () => {
+  it("sorts images by sortOrder and stringifies dates", async () => {
     const now = new Date();
-    const dto = toPublicProduct({
+    const dto = await toPublicProduct({
       _id: "abc",
       slug: "s",
       name: "n",
@@ -58,16 +58,16 @@ describe("toPublicProduct", () => {
     expect(typeof dto.createdAt).toBe("string");
   });
 
-  it("omits the visibility flag and storage keys from the public DTO", () => {
-    const dto = toPublicProduct(base as never);
+  it("omits the visibility flag and storage keys from the public DTO", async () => {
+    const dto = await toPublicProduct(base as never);
     expect("isVisible" in dto).toBe(false);
     expect("key" in dto.images[0]!).toBe(false);
   });
 });
 
 describe("toAdminProduct", () => {
-  it("adds visibility + image storage keys and keeps sortOrder", () => {
-    const dto = toAdminProduct(base as never);
+  it("adds visibility + image storage keys and keeps sortOrder", async () => {
+    const dto = await toAdminProduct(base as never);
     expect(dto.isVisible).toBe(false);
     // images sorted by sortOrder, each carrying both key and resolved url
     expect(dto.images[0]!.key).toBe("products/a.jpg");

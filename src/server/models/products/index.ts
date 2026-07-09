@@ -221,13 +221,17 @@ export async function incrementClickDB({
 }: {
   slug: string;
   channel: TClickChannel;
-}): Promise<boolean> {
+}): Promise<string | null> {
   try {
     const field = channel === "whatsapp" ? "whatsappClickCount" : "instagramClickCount";
-    const r = await Product.updateOne({ slug }, { $inc: { [field]: 1 } });
-    return r.matchedCount > 0;
+    const doc = await Product.findOneAndUpdate(
+      { slug },
+      { $inc: { [field]: 1 } },
+      { returnDocument: "after", projection: { _id: 1 } },
+    ).lean<{ _id: string } | null>();
+    return doc ? String(doc._id) : null;
   } catch {
-    return false;
+    return null;
   }
 }
 

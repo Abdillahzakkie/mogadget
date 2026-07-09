@@ -1,20 +1,32 @@
 import {
   bootstrap,
   disconnectMongoDB,
+  env,
   generateSlug,
   hashPassword,
   models,
   newImageKey,
-  writeLocalBlob,
+  putImageBlob,
+  readLocalBlob,
+  sniffImageType,
+  storageDriver,
 } from "../src/server";
 import { iam } from "../src/server/validators";
 
 const OWNER_USERNAME = process.env.SEED_OWNER_USERNAME ?? "owner";
 const OWNER_PASSWORD = process.env.SEED_OWNER_PASSWORD ?? "password";
 
-// Real product photos, keyed by product name. Downloaded at seed time and stored as
-// local blobs (served by the API at /uploads/*), so the catalog has valid images with no
-// render-time network dependency. Two entries → the detail-page gallery has a thumbnail to switch.
+// SEED_IMAGE_SOURCE=local reuses the images already on disk (the keys come from the existing
+// product records) instead of re-downloading, and re-stores them through the current driver —
+// i.e. uploads the local .uploads blobs to S3 when STORAGE_DRIVER=s3. Requires a prior seed.
+const REUSE_LOCAL = process.env.SEED_IMAGE_SOURCE === "local";
+
+// Real product photos, keyed by product name. Downloaded at seed time, validated as
+// genuine images (magic-byte sniff), and stored through the configured storage driver
+// (local disk or S3). Two entries → the detail-page gallery has a thumbnail to switch.
+// If a download fails or the payload isn't a real image, that image is DROPPED — never
+// substituted with an unrelated stock photo. A product left with no valid image renders
+// the UI's built-in no-image placeholder.
 const IMAGE_SOURCES: Record<string, string[]> = {
   "iPhone 13 128GB Midnight": [
     "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=1000&q=70&fm=jpg",
@@ -47,32 +59,86 @@ const IMAGE_SOURCES: Record<string, string[]> = {
   ],
 };
 
-// Guaranteed-valid deterministic fallback if a curated photo fails to download.
-function fallbackUrl(name: string, i: number): string {
-  const seed = encodeURIComponent(`${name}-${i}`.replace(/[^A-Za-z0-9]/g, ""));
-  return `https://picsum.photos/seed/${seed}/1000/750.jpg`;
+// Fetch image bytes with a few retries — transient CDN blips are common and shouldn't
+// cost a product its photo. Returns the raw body only when the response is OK and
+// non-trivial; genuine-image validation is done separately by sniffImageType, so a lying
+// `image/*` content-type can't smuggle an HTML error page through.
+async function fetchImage(url: string): Promise<Uint8Array | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(url, { redirect: "follow" });
+      if (r.ok) {
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        if (bytes.byteLength > 512) return bytes;
+      }
+    } catch {
+      // network error — fall through to retry
+    }
+    if (attempt < 2) await new Promise((res) => setTimeout(res, 500 * (attempt + 1)));
+  }
+  return null;
 }
 
-async function fetchImage(url: string): Promise<Uint8Array | null> {
-  try {
-    const r = await fetch(url, { redirect: "follow" });
-    if (!r.ok) return null;
-    const ct = r.headers.get("content-type") ?? "";
-    if (!ct.startsWith("image/")) return null;
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    return bytes.byteLength > 512 ? bytes : null; // reject tiny/error payloads
-  } catch {
+// Download → validate it's a real image → store through the driver → return the key.
+// A download/validation failure returns null (image dropped, no substitution). A storage
+// failure THROWS, so an S3 misconfiguration surfaces at once instead of silently
+// dropping every image.
+async function seedImage(name: string, url: string): Promise<string | null> {
+  const bytes = await fetchImage(url);
+  if (!bytes) {
+    console.warn(`  ! ${name}: image download failed after retries — dropped`);
     return null;
   }
+  const sniff = sniffImageType(bytes);
+  if (!sniff) {
+    console.warn(`  ! ${name}: downloaded payload is not a valid image — dropped`);
+    return null;
+  }
+  const key = newImageKey(sniff.ext);
+  await putImageBlob(key, bytes, sniff.contentType);
+  return key;
 }
 
-// Download → store as a local blob → return the storage key. Falls back to Picsum, then null.
-async function seedImage(name: string, url: string, i: number): Promise<string | null> {
-  const bytes = (await fetchImage(url)) ?? (await fetchImage(fallbackUrl(name, i)));
-  if (!bytes) return null;
-  const key = newImageKey("jpg");
-  await writeLocalBlob(key, bytes);
+// Reuse an image already stored on disk (key taken from the existing DB record): read the
+// local blob, validate it, and store it through the configured driver — i.e. upload the exact
+// local bytes to S3 when STORAGE_DRIVER=s3. Same key in, same key out. A missing/invalid local
+// blob drops that image; a storage failure throws (loud S3 misconfiguration).
+async function reuseLocalImage(name: string, key: string): Promise<string | null> {
+  const blob = await readLocalBlob(key);
+  if (!blob) {
+    console.warn(`  ! ${name}: local image ${key} not found on disk — dropped`);
+    return null;
+  }
+  const sniff = sniffImageType(blob.bytes);
+  if (!sniff) {
+    console.warn(`  ! ${name}: local image ${key} is not a valid image — dropped`);
+    return null;
+  }
+  await putImageBlob(key, blob.bytes, sniff.contentType);
   return key;
+}
+
+// Dev-only: fabricate a plausible click history so the admin trend chart isn't empty on a
+// fresh seed. NOT real analytics — real trends accrue from first deploy. Spread across the
+// last ~90 days, weighted toward recent days, WhatsApp heavier than Instagram.
+function syntheticClickEvents(
+  productId: string,
+  slug: string,
+): { productId: string; slug: string; channel: "whatsapp" | "instagram"; createdAt: Date }[] {
+  const out: { productId: string; slug: string; channel: "whatsapp" | "instagram"; createdAt: Date }[] = [];
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  for (let d = 0; d < 90; d++) {
+    // Recent days get more traffic (linear decay from ~4 to ~0 events/day).
+    const intensity = Math.max(0, 4 - Math.floor(d / 22));
+    for (let k = 0; k < intensity; k++) {
+      if (Math.random() > 0.6) continue; // sparse days
+      const channel = Math.random() < 0.7 ? "whatsapp" : "instagram";
+      const jitter = Math.floor(Math.random() * DAY);
+      out.push({ productId, slug, channel, createdAt: new Date(now - d * DAY - jitter) });
+    }
+  }
+  return out;
 }
 
 const DEMO = [
@@ -213,6 +279,20 @@ async function main() {
       "Refusing to seed the default owner password in production. Set SEED_OWNER_PASSWORD.",
     );
   }
+
+  // Seeding into S3? Fail fast on a missing bucket rather than uploading every image and
+  // watching each PutObject error out. (Credentials are validated by the AWS SDK on the first
+  // PutObject; display uses presigned GET URLs, so no CDN/public-read config is needed.)
+  if (storageDriver() === "s3") {
+    const unset = (v: string) => !v || v.includes("<<<");
+    if (unset(env.s3Bucket)) {
+      throw new Error(
+        "STORAGE_DRIVER=s3 but AWS_S3_BUCKET is not set. Set it (plus AWS credentials), " +
+          "or use STORAGE_DRIVER=local for local seeding.",
+      );
+    }
+  }
+
   await bootstrap();
 
   // 1) IAM built-in policies + groups.
@@ -242,21 +322,53 @@ async function main() {
     groupIds: [groupIdByName.Administrators!],
   });
 
-  // 3) Demo products. Teardown-by-name then recreate → idempotent & re-runnable, and
-  // guarantees every product carries freshly-downloaded images even on a re-seed.
+  // 3) Demo products. Teardown-by-name then recreate → idempotent & re-runnable. Download mode
+  // fetches fresh images; reuse mode (SEED_IMAGE_SOURCE=local) re-stores the existing on-disk
+  // blobs through the current driver (e.g. uploads .uploads → S3) under their existing keys.
   const names = DEMO.map((d) => d.name);
+
+  const localImagesByName: Record<string, { key: string; sortOrder: number }[]> = {};
+  if (REUSE_LOCAL) {
+    // Capture the current image keys BEFORE teardown so the exact on-disk blobs can be reused.
+    const existing = await models.products.Product.find({ name: { $in: names } })
+      .select("name images")
+      .lean<{ name: string; images?: { key: string; sortOrder: number }[] }[]>()
+      .exec();
+    for (const p of existing) {
+      localImagesByName[p.name] = (p.images ?? [])
+        .map((im) => ({ key: im.key, sortOrder: im.sortOrder }))
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    const total = Object.values(localImagesByName).reduce((n, a) => n + a.length, 0);
+    if (!total) {
+      throw new Error(
+        "SEED_IMAGE_SOURCE=local but no existing product images were found to reuse. " +
+          "Run a normal (download) seed first, or unset SEED_IMAGE_SOURCE.",
+      );
+    }
+    console.log(`Reusing ${total} local image(s) → ${storageDriver()} store.`);
+  }
+
   await models.products.Product.deleteMany({ name: { $in: names } });
 
   let imageCount = 0;
+  const createdProducts: { id: string; slug: string }[] = [];
   for (const d of DEMO) {
-    const sources = IMAGE_SOURCES[d.name] ?? [];
     const images: { key: string; sortOrder: number }[] = [];
-    for (let i = 0; i < sources.length; i++) {
-      const key = await seedImage(d.name, sources[i]!, i);
-      if (key) images.push({ key, sortOrder: i });
+    if (REUSE_LOCAL) {
+      for (const im of localImagesByName[d.name] ?? []) {
+        const key = await reuseLocalImage(d.name, im.key);
+        if (key) images.push({ key, sortOrder: im.sortOrder });
+      }
+    } else {
+      const sources = IMAGE_SOURCES[d.name] ?? [];
+      for (let i = 0; i < sources.length; i++) {
+        const key = await seedImage(d.name, sources[i]!);
+        if (key) images.push({ key, sortOrder: i });
+      }
     }
     imageCount += images.length;
-    await models.products.createProductDB({
+    const createdDoc = await models.products.createProductDB({
       name: d.name,
       category: d.category,
       brand: d.brand,
@@ -272,7 +384,15 @@ async function main() {
       images,
       specs: [...d.specs],
     });
+    if (createdDoc) createdProducts.push({ id: String(createdDoc._id), slug: createdDoc.slug });
   }
+
+  // Reset + back-fill click events for exactly the demo slugs (idempotent re-seed).
+  const demoSlugs = createdProducts.map((p) => p.slug);
+  await models.clickEvents.ClickEvent.deleteMany({ slug: { $in: demoSlugs } });
+  const events = createdProducts.flatMap((p) => syntheticClickEvents(p.id, p.slug));
+  if (events.length) await models.clickEvents.ClickEvent.insertMany(events);
+  console.log(`Seeded ${events.length} synthetic click events across ~90 days.`);
 
   console.log(
     `\nSeed complete. ${DEMO.length} products, ${imageCount} images stored.` +

@@ -10,5 +10,5 @@ export const GET = withApiHandler<ICtx>({ route: "/api/products/[slug]" }, async
   const { slug } = await ctx.params;
   const product = await services.products.getProductBySlug({ slug });
   if (!product) throw ErrNotFound;
-  return ok(toPublicProduct(product));
+  return ok(await toPublicProduct(product));
 });

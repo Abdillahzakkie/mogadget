@@ -4,13 +4,13 @@
   "version": "0.1.0",
   "scripts": {
     "ts.check": "tsc --project tsconfig.json",
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 6060",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p 6060",
     "test": "vitest run",
     "lint": "biome check",
     "format": "biome format --write",
-    "seed": "tsx scripts/seed.ts",
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

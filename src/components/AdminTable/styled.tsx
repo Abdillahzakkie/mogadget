@@ -91,3 +91,40 @@ export const ClicksTd = styled(Td)`
 export const EditLink = styled(Link)`
   font: 600 13px var(--font-body);
 `;
+
+export const ExpandBtn = styled.button`
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(20, 21, 24, 0.14);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font: 700 12px var(--font-body);
+  line-height: 1;
+`;
+
+export const DetailRow = styled.tr`
+  background: rgba(20, 21, 24, 0.02);
+`;
+
+export const DetailCell = styled.td`
+  padding: 12px 16px 18px;
+`;
+
+export const DetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+`;
+
+export const DetailBlock = styled.div`
+  h4 {
+    margin: 0 0 6px;
+    font: 700 12px var(--font-body);
+    color: var(--sold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  ul { margin: 0; padding-left: 16px; }
+  p { margin: 0; font: 500 13px var(--font-body); color: var(--ink); }
+`;

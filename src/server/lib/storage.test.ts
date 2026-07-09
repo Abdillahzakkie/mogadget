@@ -4,12 +4,22 @@ import { describe, expect, it } from "vitest";
 import { env } from "../constants/environments";
 import {
   newImageKey,
+  putImageBlob,
   readLocalBlob,
   resolveImageUrl,
   signUpload,
+  sniffImageType,
   storageDriver,
   writeLocalBlob,
 } from "./storage";
+
+// Minimal valid headers for each supported format.
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+const GIF = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0, 0, 0, 0, 0]);
+const WEBP = new Uint8Array([
+  0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50,
+]);
 
 describe("storage keys", () => {
   it("mints a namespaced key with normalized extension", () => {
@@ -21,11 +31,11 @@ describe("storage keys", () => {
     expect(newImageKey("pn!g")).toMatch(/\.png$/);
     expect(newImageKey("###")).toMatch(/\.jpg$/); // all chars stripped → fallback
   });
-  it("resolves a local key to the same-origin /uploads path", () => {
-    expect(resolveImageUrl("products/abc.jpg")).toBe("/uploads/products/abc.jpg");
+  it("resolves a local key to the same-origin /uploads path", async () => {
+    expect(await resolveImageUrl("products/abc.jpg")).toBe("/uploads/products/abc.jpg");
   });
-  it("passes through already-absolute urls (M1 seed data)", () => {
-    expect(resolveImageUrl("https://cdn.example/x.jpg")).toBe("https://cdn.example/x.jpg");
+  it("passes through already-absolute urls (M1 seed data)", async () => {
+    expect(await resolveImageUrl("https://cdn.example/x.jpg")).toBe("https://cdn.example/x.jpg");
   });
   it("defaults to the local driver", () => {
     expect(storageDriver()).toBe("local");
@@ -51,7 +61,38 @@ describe("signUpload (local driver)", () => {
     // The route's [key] matches one segment, so the upload URL carries only the filename.
     const fileName = key.split("/").pop()!;
     expect(uploadUrl).toBe(`/api/admin/uploads/blob/${fileName}`);
-    expect(publicUrl).toBe(resolveImageUrl(key));
+    expect(publicUrl).toBe(await resolveImageUrl(key));
+  });
+});
+
+describe("sniffImageType", () => {
+  it("identifies each supported format by magic bytes", () => {
+    expect(sniffImageType(JPEG)).toEqual({ ext: "jpg", contentType: "image/jpeg" });
+    expect(sniffImageType(PNG)).toEqual({ ext: "png", contentType: "image/png" });
+    expect(sniffImageType(GIF)).toEqual({ ext: "gif", contentType: "image/gif" });
+    expect(sniffImageType(WEBP)).toEqual({ ext: "webp", contentType: "image/webp" });
+  });
+  it("rejects non-image bytes (e.g. an HTML error page)", () => {
+    const html = new TextEncoder().encode("<!doctype html><html>404</html>");
+    expect(sniffImageType(html)).toBeNull();
+  });
+  it("rejects payloads too short to carry a signature", () => {
+    expect(sniffImageType(new Uint8Array([0xff, 0xd8, 0xff]))).toBeNull();
+  });
+  it("rejects a RIFF container that is not WEBP", () => {
+    const wav = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45]);
+    expect(sniffImageType(wav)).toBeNull();
+  });
+});
+
+describe("putImageBlob (local driver)", () => {
+  it("writes bytes to the local store and reads back with the right content type", async () => {
+    const key = newImageKey("png");
+    await putImageBlob(key, PNG, "image/png");
+    const read = await readLocalBlob(key);
+    expect(read?.contentType).toBe("image/png");
+    expect([...(read?.bytes ?? [])]).toEqual([...PNG]);
+    await fs.rm(path.join(env.localUploadDir, key), { force: true });
   });
 });
 

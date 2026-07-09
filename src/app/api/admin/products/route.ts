@@ -19,7 +19,7 @@ import { createProductSchema } from "@/server/validators/schemas";
 export const GET = withApiHandler({ route: "/api/admin/products" }, async () => {
   await requirePermission(Permission.ProductsWrite);
   const rows = await services.products.listProducts({ status: "all", includeHidden: true });
-  return ok(rows.map(toAdminProduct));
+  return ok(await Promise.all(rows.map(toAdminProduct)));
 });
 
 export const POST = withApiHandler({ route: "/api/admin/products" }, (req) =>
@@ -30,7 +30,7 @@ export const POST = withApiHandler({ route: "/api/admin/products" }, (req) =>
       const doc = await services.products.createProduct(input);
       if (!doc) throw ErrInvalidFields;
       triggerRevalidate([revalidateTags.products, revalidateTags.product(doc.slug)]);
-      return created(toAdminProduct(doc));
+      return created(await toAdminProduct(doc));
     },
     { action: "product.create", targetType: "product", captureBody: true },
   )(req),

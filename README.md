@@ -32,7 +32,7 @@ docker run --rm -d -p 6379:6379 redis:7-alpine
 pnpm install
 pnpm seed                     # owner in Administrators, IAM built-ins, demo catalog
                               # → prints: owner / password
-pnpm dev                      # app on :3000 (frontend + API, one origin)
+pnpm dev                      # app on :6060 (frontend + API, one origin)
 
 pnpm test                     # unit tests (needs Mongo + Redis)
 pnpm ts.check                 # typecheck
