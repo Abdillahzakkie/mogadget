@@ -1,4 +1,5 @@
 export * from "./clientIp";
+export * from "./crypto";
 export * from "./handler";
 export * from "./logger";
 export * from "./password";
