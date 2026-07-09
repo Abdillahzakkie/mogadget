@@ -36,9 +36,11 @@ describe("products model *DB", () => {
     expect(created?.slug).toBe(p.slug);
     expect((await getProductBySlugDB({ slug: p.slug }))?.name).toBe("iPhone 13");
   });
-  it("increments a click counter by slug", async () => {
-    expect(await incrementClickDB({ slug: p.slug, channel: "whatsapp" })).toBe(true);
+  it("increments a click counter by slug and returns the product id", async () => {
+    const id = await incrementClickDB({ slug: p.slug, channel: "whatsapp" });
+    expect(typeof id).toBe("string");
     expect((await getProductBySlugDB({ slug: p.slug }))?.whatsappClickCount).toBe(1);
+    expect(await incrementClickDB({ slug: "does-not-exist", channel: "whatsapp" })).toBeNull();
   });
   it("hides invisible products from public list", async () => {
     await Product.updateOne({ slug: p.slug }, { $set: { isVisible: false } });
