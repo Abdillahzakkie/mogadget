@@ -34,4 +34,23 @@ describe("clickEvents aggregation + clickTrends service", () => {
     const rows = await clicksByDayDB({ since: new Date("2026-06-02T00:00:00.000Z") });
     expect(rows.every((r) => r.day >= "2026-06-02")).toBe(true);
   });
+
+  it("clickTrends clamps invalid windows to 30 days", async () => {
+    const { default: clickTrends } = await import("./clickTrends");
+    const now = new Date("2026-06-10T12:00:00.000Z");
+    const out = await clickTrends({ days: 999, now });
+    expect(out.days).toBe(30);
+    expect(out.series).toHaveLength(30);
+  });
+
+  it("clickTrends returns dense series with totals from stored events", async () => {
+    const { default: clickTrends } = await import("./clickTrends");
+    const now = new Date("2026-06-02T12:00:00.000Z");
+    // Events from Task 1 are on 2026-06-01 (2 wa, 1 ig) and 2026-06-02 (1 wa).
+    const out = await clickTrends({ days: 7, now });
+    expect(out.series).toHaveLength(7);
+    expect(out.series[out.series.length - 1].date).toBe("2026-06-02");
+    expect(out.totals.whatsapp).toBe(3);
+    expect(out.totals.instagram).toBe(1);
+  });
 });
