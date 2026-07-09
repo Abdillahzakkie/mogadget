@@ -3,6 +3,10 @@ export const INSECURE_SESSION_SECRET = "dev-insecure-secret-change-me";
 export const env = {
   isProduction: process.env.NODE_ENV === "production",
   mongoUri: process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/mogadget",
+  // Explicit database name. Passed to mongoose as `dbName`, which overrides any DB in the
+  // connection string — so a bare SRV URI (no `/db` path) still lands in the right database
+  // instead of Mongo's default `test`.
+  dbName: process.env.DB_NAME ?? "mogadget",
   redisUrl: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
   sessionSecret: process.env.SESSION_SECRET ?? INSECURE_SESSION_SECRET,
   trustProxy: process.env.TRUST_PROXY === "true",

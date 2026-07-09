@@ -8,7 +8,8 @@ declare global {
 
 export async function connectMongoDB(): Promise<void> {
   if (mongoose.connection.readyState === 1) return;
-  if (!globalThis.__mogadgetMongo) globalThis.__mogadgetMongo = mongoose.connect(env.mongoUri);
+  if (!globalThis.__mogadgetMongo)
+    globalThis.__mogadgetMongo = mongoose.connect(env.mongoUri, { dbName: env.dbName });
   await globalThis.__mogadgetMongo;
 }
 export async function disconnectMongoDB(): Promise<void> {
