@@ -118,6 +118,29 @@ async function reuseLocalImage(name: string, key: string): Promise<string | null
   return key;
 }
 
+// Dev-only: fabricate a plausible click history so the admin trend chart isn't empty on a
+// fresh seed. NOT real analytics — real trends accrue from first deploy. Spread across the
+// last ~90 days, weighted toward recent days, WhatsApp heavier than Instagram.
+function syntheticClickEvents(
+  productId: string,
+  slug: string,
+): { productId: string; slug: string; channel: "whatsapp" | "instagram"; createdAt: Date }[] {
+  const out: { productId: string; slug: string; channel: "whatsapp" | "instagram"; createdAt: Date }[] = [];
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  for (let d = 0; d < 90; d++) {
+    // Recent days get more traffic (linear decay from ~4 to ~0 events/day).
+    const intensity = Math.max(0, 4 - Math.floor(d / 22));
+    for (let k = 0; k < intensity; k++) {
+      if (Math.random() > 0.6) continue; // sparse days
+      const channel = Math.random() < 0.7 ? "whatsapp" : "instagram";
+      const jitter = Math.floor(Math.random() * DAY);
+      out.push({ productId, slug, channel, createdAt: new Date(now - d * DAY - jitter) });
+    }
+  }
+  return out;
+}
+
 const DEMO = [
   {
     name: "iPhone 13 128GB Midnight",
@@ -329,6 +352,7 @@ async function main() {
   await models.products.Product.deleteMany({ name: { $in: names } });
 
   let imageCount = 0;
+  const createdProducts: { id: string; slug: string }[] = [];
   for (const d of DEMO) {
     const images: { key: string; sortOrder: number }[] = [];
     if (REUSE_LOCAL) {
@@ -344,7 +368,7 @@ async function main() {
       }
     }
     imageCount += images.length;
-    await models.products.createProductDB({
+    const createdDoc = await models.products.createProductDB({
       name: d.name,
       category: d.category,
       brand: d.brand,
@@ -360,7 +384,15 @@ async function main() {
       images,
       specs: [...d.specs],
     });
+    if (createdDoc) createdProducts.push({ id: String(createdDoc._id), slug: createdDoc.slug });
   }
+
+  // Reset + back-fill click events for exactly the demo slugs (idempotent re-seed).
+  const demoSlugs = createdProducts.map((p) => p.slug);
+  await models.clickEvents.ClickEvent.deleteMany({ slug: { $in: demoSlugs } });
+  const events = createdProducts.flatMap((p) => syntheticClickEvents(p.id, p.slug));
+  if (events.length) await models.clickEvents.ClickEvent.insertMany(events);
+  console.log(`Seeded ${events.length} synthetic click events across ~90 days.`);
 
   console.log(
     `\nSeed complete. ${DEMO.length} products, ${imageCount} images stored.` +
